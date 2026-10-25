@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { messageOf, type Api } from '../api'
 import type { Exchange } from '../types'
 
@@ -29,7 +29,7 @@ export function Conversation({ exchanges, epoch, pending, busy, toneConfigured, 
       {pending !== null && (
         <li className="exchange" aria-busy="true">
           <article className="turn turn-user">
-            <p className="turn-label">あなた</p>
+            <p className="visually-hidden">あなた</p>
             <p className="turn-text">{pending}</p>
           </article>
           <article className="turn turn-ai turn-thinking" role="status">
@@ -51,9 +51,11 @@ type TurnProps = Pick<Props, 'busy' | 'toneConfigured' | 'tone' | 'onApprove' | 
 function UserTurn({ exchange, busy, toneConfigured, tone, onApprove, onReject }: TurnProps) {
   const candidate = exchange.candidate
   const [thought, setThought] = useState(candidate?.thought ?? '')
+  // Press the stamp only when approved on this page, not for answers already approved on load.
+  const approvedOnLoad = useRef(candidate?.status === 'approved')
   return (
     <article className="turn turn-user">
-      <p className="turn-label">あなた</p>
+      <p className="visually-hidden">あなた</p>
       <p className="turn-text">{exchange.message}</p>
       {candidate?.status === 'pending' && (
         <details className="fold fold-remember">
@@ -81,7 +83,14 @@ function UserTurn({ exchange, busy, toneConfigured, tone, onApprove, onReject }:
           </form>
         </details>
       )}
-      {candidate?.status === 'approved' && <p className="note saved">保存した回答です。現在の記憶は「覚えていること」で確認できます。</p>}
+      {candidate?.status === 'approved' && (
+        <div className="saved">
+          <span className={approvedOnLoad.current ? 'stamp' : 'stamp is-new'} aria-hidden="true">
+            覚えた
+          </span>
+          <p className="note">保存した回答です。現在の記憶は「覚えていること」で確認できます。</p>
+        </div>
+      )}
       <Tone exchangeId={exchange.id} configured={toneConfigured} tone={tone} />
     </article>
   )
@@ -129,7 +138,7 @@ function AssistantTurn({ exchange }: { exchange: Exchange }) {
   const { reply, refs } = exchange
   return (
     <article className="turn turn-ai">
-      <p className="turn-label">{reply.provider === 'gemini' ? 'Geminiの返答 · 推測を含みます' : '以前のモック・固定応答'}</p>
+      <p className="turn-label">{reply.provider === 'gemini' ? 'Geminiの返答（推測を含みます）' : '以前のモック・固定応答'}</p>
       <p className="turn-text">{reply.interpretation}</p>
       {reply.question && <p className="turn-text turn-question">{reply.question}</p>}
       {refs.length > 0 && (

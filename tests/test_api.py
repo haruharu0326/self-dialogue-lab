@@ -213,5 +213,5 @@ def test_only_local_browser_requests_are_accepted(env):
     same = client.delete('/api/conversations', headers={'origin': 'http://127.0.0.1:8501'})
     assert same.status_code == 200
     assert client.get('/api/health').json() == {'status': 'ok'}
-    assert client.get('/media/landscape.png').headers['content-type'] == 'image/png'
+    assert client.get('/media/landscape.png').status_code == 404
     assert '画面がまだビルドされていません' in client.get('/').text

@@ -35,6 +35,10 @@ SCHEMA = {
 }
 
 
+GENERATION_CONFIG = {'responseMimeType': 'application/json', 'responseSchema': SCHEMA,
+                     'maxOutputTokens': 8192}
+
+
 class GeminiError(RuntimeError):
     """Only safe, user-facing messages; never include remote error bodies."""
 
@@ -67,8 +71,7 @@ class GeminiResponder:
         payload = {
             'systemInstruction': {'parts': [{'text': SYSTEM}]},
             'contents': [{'role': 'user', 'parts': [{'text': json.dumps(data, ensure_ascii=False)}]}],
-            'generationConfig': {'responseMimeType': 'application/json', 'responseSchema': SCHEMA,
-                                 'maxOutputTokens': 8192},
+            'generationConfig': GENERATION_CONFIG,
         }
         request = Request(
             f'https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent',

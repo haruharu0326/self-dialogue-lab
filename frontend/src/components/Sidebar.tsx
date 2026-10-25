@@ -15,8 +15,7 @@ export function Sidebar({ configured, memories, busy, onResetConsent, onForget, 
   return (
     <div className="sidebar-inner">
       <p className="wordmark" aria-hidden="true">
-        <span className="wordmark-ring" />
-        SELF DIALOGUE LAB
+        Self Dialogue Lab
       </p>
 
       <details className="panel" open={!configured}>
@@ -35,7 +34,6 @@ export function Sidebar({ configured, memories, busy, onResetConsent, onForget, 
           <button type="button" className="button button-quiet" onClick={onResetConsent}>
             送信の確認をやり直す
           </button>
-          <p className="note">背景はAI生成の風景です。外部の画像サイトへは接続しません。</p>
         </div>
       </details>
 

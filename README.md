@@ -4,7 +4,7 @@
 
 Geminiと対話し、残したい自分の回答だけ「覚えておく」。覚えた回答を次の対話で参照します。「学習」はモデルの再訓練ではなく、この記憶の仕組みです。
 
-通常画面はチャット1画面です。シナリオ、分析、評価、細かな設定を並べません。自然の風景を画面全体に敷き、会話を半透明のパネルで読みます。
+通常画面はチャット1画面です。シナリオ、分析、評価、細かな設定を並べません。罫線ノートの1ページのように、自分の言葉を罫線の上に、問いを余白に書き分けます。
 
 画面はReact（`frontend/`）、会話・記憶の処理とDBはPythonのAPIサーバー（FastAPI）です。どちらも同じ http://127.0.0.1:8501 で動きます。
 
@@ -63,9 +63,11 @@ Get-Content -Raw .\scripts\check_gemini.py | docker compose exec -T app python -
 - DBは直接起動時 `data/personal.sqlite3`、Dockerでは `/app/data/personal.sqlite3`。環境変数 `SELF_DIALOGUE_PERSONAL_DB` で変更できます。
 - `.env`、DB、個人書き出し、モデルはGit対象外。APIキーをDBや画面へ保存しません。送信した情報のGoogle側での取扱いは利用条件に従います。
 - 推測を含む返答であり、本人の人格・意識の再現や正確な理解を保証しません。意味検索やモデル重みの学習はありません。
-- 風景はAI生成。[素材と生成条件](src/self_dialogue_lab/assets/provenance.json)を同梱し、画像・フォントを外部取得しません。
+- 通常画面は画像・フォントを外部取得しません（書体はOS同梱）。検証用画面の風景はAI生成で、[素材と生成条件](src/self_dialogue_lab/assets/provenance.json)を同梱しています。
 
 ## 開発・検証
+
+応答評価は `python scripts/evaluate.py run --output .eval-runs/baseline.json`。既定はモック・固定応答で、`--live --repeat 3` を追加すると架空ケースをGeminiへ送信して反復します。環境変数のキーを使います。結果JSONには人の採点欄があり、`python scripts/evaluate.py compare .eval-runs/baseline.json .eval-runs/candidate.json` で比較できます。[仕様・採点手順](docs/development/response-evaluation.md)を参照してください。
 
 自動レビューはCodex CLIへログイン後、`python scripts/review.py`。検証を実行し、HEADから現在までの差分・規約・仕様・関連コードをモデル提供先へ送り、結果を`.review-runs/`へ保存します。`--paths scripts/review.py`のように対象を限定でき、`--prepare-only`なら送信せず入力だけ確認できます。終了コードと制限は[自動レビューの実行仕様](docs/development/harness-plan.md#自動レビュー実行器の仕様)を参照してください。
 
