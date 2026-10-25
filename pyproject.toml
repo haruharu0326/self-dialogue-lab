@@ -4,20 +4,22 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "self-dialogue-lab"
-version = "0.2.0"
-description = "Local self-dialogue app with mock and optional Gemini chat"
+version = "0.3.0"
+description = "Local self-dialogue app: FastAPI and a React screen, with remembered answers"
 requires-python = ">=3.11"
-dependencies = ["streamlit>=1.40,<2"]
+dependencies = ["fastapi>=0.115,<1", "uvicorn>=0.30,<1"]
 
 [project.optional-dependencies]
-dev = ["pytest>=8,<10"]
+dev = ["pytest>=8,<10", "httpx>=0.27,<1"]
+lab = ["streamlit>=1.40,<2"]
 sentiment = ["transformers>=4.45,<5", "torch>=2.4,<3", "safetensors>=0.4,<1"]
+voice = ["faster-whisper>=1.2,<2", "huggingface-hub>=0.34,<1", "av>=14,<17"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-self_dialogue_lab = ["samples/*.json", "assets/*.png", "assets/*.css", "assets/*.json"]
+self_dialogue_lab = ["samples/*.json", "assets/*.png", "assets/*.css", "assets/*.json", "static/*", "static/assets/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

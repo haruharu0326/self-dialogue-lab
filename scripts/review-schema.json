@@ -1,0 +1,27 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["summary", "findings", "blockers"],
+  "properties": {
+    "summary": {"type": "string"},
+    "blockers": {"type": "array", "items": {"type": "string"}},
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["severity", "path", "line", "title", "condition", "impact", "basis", "validation"],
+        "properties": {
+          "severity": {"type": "string", "enum": ["P0", "P1", "P2", "P3"]},
+          "path": {"type": "string"},
+          "line": {"type": "integer", "minimum": 1},
+          "title": {"type": "string"},
+          "condition": {"type": "string"},
+          "impact": {"type": "string"},
+          "basis": {"type": "string"},
+          "validation": {"type": "string"}
+        }
+      }
+    }
+  }
+}

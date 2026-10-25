@@ -6,6 +6,8 @@ Geminiと対話し、残したい自分の回答だけ「覚えておく」。�
 
 通常画面はチャット1画面です。シナリオ、分析、評価、細かな設定を並べません。自然の風景を画面全体に敷き、会話を半透明のパネルで読みます。
 
+画面はReact（`frontend/`）、会話・記憶の処理とDBはPythonのAPIサーバー（FastAPI）です。どちらも同じ http://127.0.0.1:8501 で動きます。
+
 ## 起動
 
 Docker Desktopを起動し、次をPowerShellで実行します。
@@ -65,15 +67,76 @@ Get-Content -Raw .\scripts\check_gemini.py | docker compose exec -T app python -
 
 ## 開発・検証
 
-ホストで直接起動する場合：
+自動レビューはCodex CLIへログイン後、`python scripts/review.py`。検証を実行し、HEADから現在までの差分・規約・仕様・関連コードをモデル提供先へ送り、結果を`.review-runs/`へ保存します。`--paths scripts/review.py`のように対象を限定でき、`--prepare-only`なら送信せず入力だけ確認できます。終了コードと制限は[自動レビューの実行仕様](docs/development/harness-plan.md#自動レビュー実行器の仕様)を参照してください。
+
+一括検証は `python scripts/verify.py`。Python・画面テスト、型チェックを含むビルド、一時DBでの起動を確認します。失敗は終了コード1、失敗なしでスキップがある場合は2、完全成功は0です。スキップを許容する場合は `--allow-skips` を指定します。[実行仕様と制限](docs/development/harness-plan.md#一括検証の実行仕様)を参照してください。
+
+ホストで直接起動する場合は、Python 3.11以上とNode.js 24以上が必要です。画面を一度ビルドしてから、APIサーバーを起動します。
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -e ".[dev]"
+npm --prefix frontend ci
+npm --prefix frontend run build
 # GEMINI_API_KEYを環境変数へ設定してから起動（.envは直接起動では自動読込しません）
-.\.venv\Scripts\python.exe -m streamlit run src/app.py
+.\.venv\Scripts\python.exe src/app.py
 ```
 
-テスト：`python -m pytest -q --basetemp=.test-temp`
+画面を編集しながら確認する場合は、上のAPIサーバーを起動したまま `npm --prefix frontend run dev` を実行し、表示された http://127.0.0.1:5173 を開きます。APIへの通信は8501へ中継されます。
 
-従来の管理・モック・分析機能は検証用の `streamlit run src/lab.py` に分離しました。通常利用では不要です。構成・詳細要件・過去機能の仕様は[文書一覧](docs/README.md)、確認済みと未確認の区別は[受入テスト](docs/testing/acceptance-tests.md)を参照してください。
+テスト：`python -m pytest -q --basetemp=.test-temp`（API・DB・応答器）と `npm --prefix frontend test`（画面）。型チェックは `npm --prefix frontend run typecheck`。
+
+従来の管理・モック・分析機能は検証用の `src/lab.py` に分離しました。通常利用では不要です。使う場合だけ `pip install -e ".[lab]"` でStreamlitを入れ、`streamlit run src/lab.py` で起動します。構成・詳細要件・過去機能の仕様は[文書一覧](docs/README.md)、確認済みと未確認の区別は[受入テスト](docs/testing/acceptance-tests.md)を参照してください。
+
+## 文章のトーン分析（任意）
+
+各本人発言の「文章のトーン（任意）」から3分類を実行できます。本人の気持ちの断定ではなく文章からの推定です。結果は保存・Gemini送信せず、ページの再読み込みや会話の削除で消えます。モデルのスコアは感情の確率として表示しません。
+
+Dockerでは `.env` に次を追加します（APIキーは変更不要）。
+
+```dotenv
+INSTALL_SENTIMENT=true
+SENTIMENT_MODEL_PATH=/app/models/sentiment
+```
+
+```powershell
+docker compose build app
+docker compose run --rm --no-deps app python -m self_dialogue_lab.sentiment --prepare
+docker compose up -d --force-recreate app
+```
+
+初回の依存・モデル取得には通信とディスク容量が必要です。取得処理は会話を読みません。モデルは専用ボリュームに保存され、分析時はローカルファイルだけを使用します。取得に失敗した場合は設定・通信・保存先を確認して同じ取得コマンドを再実行してください。
+
+Python直接起動の場合：
+
+```powershell
+python -m pip install -e ".[dev,sentiment]"
+$env:SENTIMENT_MODEL_PATH = "$PWD/models/sentiment"
+python -m self_dialogue_lab.sentiment --prepare
+python src/app.py
+```
+
+モデルは既存の [multilingual sentiment student](https://huggingface.co/lxyuan/distilbert-base-multilingual-cased-sentiments-student) を固定リビジョンで取得します。実際の日本語分類精度は未評価です。長文は先頭512トークンまでを対象とします。
+
+## 音声入力（任意）
+
+「音声で入力（任意）」を開き、「録音する」でマイクを許可して60秒以内の日本語を話し、「録音を止める」を押します（60秒で自動停止）。「文字起こし」後に文章を確認・編集し、「この文章を送信」を押します。録音だけで自動送信されません。録音はブラウザで16kHzのWAVに変換してこのPCのサーバーへ送り、PC内で処理します。ファイルやDBへは保存しません。送信した文章は通常の会話として保存・Gemini送信します。誤認識は必ず確認してください。
+
+Dockerでは `.env` に次を追加し、既存のAPIキー・分析設定は維持します。
+
+```dotenv
+INSTALL_VOICE=true
+VOICE_MODEL_PATH=/app/models/voice
+```
+
+```powershell
+docker compose build app
+docker compose run --rm --no-deps app python -m self_dialogue_lab.voice --prepare
+docker compose up -d --force-recreate app
+```
+
+初回は依存と約486MBのモデルを取得します。取得処理は会話・録音を読みません。モデルはモデル用ボリュームに保持され、文字起こし時に外部へ音声を送りません。利用するのは[Systran/faster-whisper-small](https://huggingface.co/Systran/faster-whisper-small)の固定リビジョンです。
+
+直接起動の場合は `python -m pip install -e ".[dev,voice]"`、`$env:VOICE_MODEL_PATH = "$PWD/models/voice"`、`python -m self_dialogue_lab.voice --prepare` を実行してから `python src/app.py` で起動します。
+
+マイクは `http://localhost:8501` または `http://127.0.0.1:8501` で使用してください。リモート接続はHTTPSとブラウザのマイク権限が必要です。認識できない場合は短く録音し直すか手入力を使えます。「録音と下書きを破棄」でやり直せます。文字起こしはCPUで動くため、録音の長さやPCにより待ち時間が変わります。

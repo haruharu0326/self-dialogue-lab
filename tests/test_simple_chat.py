@@ -1,4 +1,3 @@
-from pathlib import Path
 import pytest
 
 from self_dialogue_lab.responder import Reply
@@ -64,20 +63,4 @@ def test_personal_chat_without_consent_does_not_call_model(tmp_path):
         converse_personal(db, client, '相談', consent=False)
     assert client.inputs == []
     assert db.rows('SELECT * FROM messages') == []
-    db.db.close()
-
-
-def test_product_screen_has_no_lab_controls_or_sample_records(tmp_path, monkeypatch):
-    pytest.importorskip('streamlit')
-    from streamlit.testing.v1 import AppTest
-    monkeypatch.delenv('GEMINI_API_KEY', raising=False)
-    path = tmp_path/'personal.sqlite3'
-    monkeypatch.setenv('SELF_DIALOGUE_PERSONAL_DB', str(path))
-    app = AppTest.from_file(str(Path(__file__).resolve().parents[1]/'src/app.py')).run()
-    assert not app.exception
-    assert not app.selectbox and not app.radio and not app.multiselect
-    assert app.chat_input[0].disabled
-    db = Store(path)
-    assert db.records() == []
-    assert db.rows('SELECT * FROM meta') == []
     db.db.close()

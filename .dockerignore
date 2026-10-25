@@ -4,9 +4,11 @@
 !pyproject.toml
 !src/
 !src/**
-!.streamlit/
-!.streamlit/config.toml
+!frontend/
+!frontend/**
 
+**/node_modules
+src/self_dialogue_lab/static
 **/__pycache__
 **/*.py[cod]
 **/*.sqlite*
