@@ -22,6 +22,9 @@ RUN if [ "$INSTALL_SENTIMENT" = "true" ]; then \
     && mkdir -p /app/data /app/models \
     && chown app:app /app/data /app/models
 
+ARG INSTALL_VOICE=false
+RUN if [ "$INSTALL_VOICE" = "true" ]; then python -m pip install --no-cache-dir '.[voice]'; fi
+
 USER app
 
 EXPOSE 8501

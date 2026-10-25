@@ -9,6 +9,8 @@
 |src/app.py|通常入口。ui.runを呼ぶ|
 |src/self_dialogue_lab/ui.py|1画面チャット、接続・送信確認、記憶一覧・削除、会話削除。Storeとserviceを呼ぶ|
 |simple_chat.py|会話と参照の描画、本人回答の承認・拒否|
+|sentiment_ui.py / sentiment.py|任意の文章トーン表示とローカル3分類。結果の保存・対話への送信なし|
+|voice_ui.py / voice.py|録音・下書き確認UIとローカル文字起こし。音声を保存・外部送信しない|
 |service.py|入力・送信確認、現在の記憶選択、会話文脈、応答呼出し、一括保存|
 |store.py|SQLite初期化・移行、記憶・候補の状態遷移、履歴・削除・データ取得|
 |gemini.py|Gemini REST通信、出力・参照ID検証、安全なエラー分類。UI/DBに依存しない|
@@ -99,6 +101,10 @@ JSONでinterpretation（非空、最大20000文字）、question（文字列、�
 |GEMINI_MODEL|モデル。省略時はコードのDEFAULT_MODEL。モデルの利用可否はアカウントに依存|
 |GEMINI_TIMEOUT_SECONDS|API待ち時間。省略120秒、5〜300の有限値だけを許可|
 |SELF_DIALOGUE_PERSONAL_DB|本人用DB。直接起動はdata/personal.sqlite3、Dockerは/app/data/personal.sqlite3|
+|INSTALL_SENTIMENT|Composeのビルド引数。trueでCPU版PyTorchとsentiment追加依存を導入。既定false|
+|SENTIMENT_MODEL_PATH|分析用モデルのローカルディレクトリ。未設定なら分析操作を無効化。Dockerの設定例は/app/models/sentiment|
+|INSTALL_VOICE|Composeのビルド引数。trueでvoice追加依存を導入。既定false|
+|VOICE_MODEL_PATH|音声モデルのローカルディレクトリ。Dockerの設定例は/app/models/voice。未設定でも手入力可能|
 
 Dockerは非root実行、ホスト127.0.0.1:8501公開、app-dataを/app/dataへマウント。healthcheckは/_stcore/healthの稼働確認で、APIキーの認証や画面操作の成功確認ではありません。`.dockerignore`は必要なソースと設定だけを許可します。`.streamlit/config.toml`で統計送信を無効化します。
 
@@ -118,6 +124,48 @@ Dockerは非root実行、ホスト127.0.0.1:8501公開、app-dataを/app/dataへ
 
 入口は `src/lab.py → lab_ui.py`。モックシナリオA〜E、サンプル領域、詳細な記録編集・変化リンク、候補管理、応答評価、JSON出力、手動参照選択、任意センチメントが残っています。通常UIからのリンクやモード切替はなく、通常の利用に不要です。
 
-関連コードはlab_ui.py、chat_ui.py、responder.pyのMockResponder、sentiment.py。サンプルは架空JSONで、通常DBへ投入しません。センチメントは任意依存と事前取得モデルを使うローカル推論で、結果をDBやGeminiへ渡しません。通常機能へ昇格する要件ではありません。
+関連コードはlab_ui.py、chat_ui.py、responder.pyのMockResponder、sentiment.py。サンプルは架空JSONで、通常DBへ投入しません。センチメントは任意依存と事前取得モデルを使うローカル推論で、結果をDBやGeminiへ渡しません。通常画面でも任意の文章トーン分析として利用します（[FR-025](../requirements/functional-requirements.md#fr-025-文章のトーンを分析する)）。
 
 Store.exportの検証用出力はUTF-8のJSON配列で、recordsのid/thought/reason/context/occurred/previous_id/supersededを一覧順に出します。空は[]。会話・候補・評価は含みません。
+
+## 通常画面の文章トーン分析
+
+### モデルと配置
+
+|項目|実装仕様|
+|---|---|
+|モデル|lxyuan/distilbert-base-multilingual-cased-sentiments-student|
+|固定リビジョン|50406a7df25e4130306d6663e4c9c2ad78093b6e|
+|方式|Transformersのtext-classificationによるCPU推論。生成LLMへの分析依頼ではない|
+|出力|positive / neutral / negativeを日本語の3分類へ変換。最大スコアの1分類を表示|
+|取得対象|設定・トークナイザー・model.safetensors・モデル説明等。重みは約541MB。pickle形式の重みは取得しない|
+|取得方法|明示的なsentiment --prepareのみ。リモートコード実行を許可しない|
+|配置|Dockerはsentiment-modelsを/app/modelsへマウント。会話・記憶のapp-dataと分離|
+|DB|スキーマ変更なし。分類結果のテーブル・保存候補は作らない|
+
+モデル仕様の出典は[配布元のモデルカード](https://huggingface.co/lxyuan/distilbert-base-multilingual-cased-sentiments-student)。採用モデルとリビジョンはsentiment.pyの定数を正本とします。依存の許容バージョンはpyproject.toml、導入済みバージョンと動作確認結果は[受入テストの実施記録](../testing/acceptance-tests.md#文章トーン分析の追加2026-10-25)を参照してください。
+
+### 呼び出し・保存・送信の境界
+
+simple_chat → sentiment_ui.render_tone → sentiment.analyze。SENTIMENT_MODEL_PATHのローカルモデルを使用し、推論時はlocal_files_only=True。モデル取得は明示的な事前セットアップだけで行います。分類のスコアは確率として表示しません。UIは結果をローカル変数だけで扱い、DB・session_state・Gemini入力を更新しません。再表示で消えるため、会話削除やID再利用時にも古い分析結果を引き継ぎません。未設定・失敗時に代替分類しません。設定手順は[README](../../README.md#文章のトーン分析任意)を参照。
+
+モデルとパイプラインはプロセス内でキャッシュしますが、分析結果はキャッシュしません。入力は対象発言だけで、長期記憶や会話履歴は分類器へ渡しません。空白入力・不正なラベル・非有限または範囲外のスコアを拒否し、依存や推論の例外本文は画面へ出しません。
+
+## 音声入力
+
+通常UI → voice_ui.render_voice_input → voice.transcribe。ブラウザのst.audio_inputで16kHz WAVを録音し、ローカルStreamlitへ渡します。マイク権限が必要で、localhostまたはHTTPSで利用します。操作の仕様は[外部設計](external-design.md#音声で入力任意)を参照。
+
+|項目|仕様|
+|---|---|
+|モデル|Systran/faster-whisper-small、リビジョン536b0662742c02347bc0e980a01041f333bce120|
+|実行|faster-whisper / CTranslate2、CPU int8、local_files_only=True、日本語・transcribe固定|
+|事前取得|voice --prepareからHugging Faceへ接続し、config.json / model.bin / tokenizer.json / vocabulary.txt等を取得。model.binはCTranslate2の重み形式|
+|配置|既存のモデル用sentiment-modelsボリューム内/app/models/voice。トーンモデルとは別ディレクトリ、DBとも分離|
+|入力境界|モノラル16bit PCM・16kHz WAV、0秒超〜60秒、最大1,924,096バイト。ヘッダー・実データ長・ほぼ無音を検査|
+|推論|beam_size=5、vad_filter=True、condition_on_previous_text=False。遅延イテレーターの走査も例外境界内。空結果・過大な文字起こしは拒否|
+|保持|モデルだけプロセスキャッシュ。録音はアップロード用メモリ、下書きはStreamlitセッション。音声のファイル保存・DB列追加なし|
+|送信|確認した文字列だけsend_message → converse_personal。既存の送信確認・現在の記憶・会話文脈・保存候補承認の規則を適用|
+
+録音のSHA-256が変わると以前の下書きをクリア。成功送信・破棄・会話削除ではvoice_状態を破棄し、録音ウィジェットの世代キーを更新。失敗した送信では下書きを残し、自動再試行しません。ブラウザやOSの録音バッファの完全消去は保証しません。
+
+依存はpyproject.tomlのvoice追加依存。Dockerfileとcompose.yamlで任意導入し、初回取得後はオフラインで文字起こし可能です。設定手順は[README](../../README.md#音声入力任意)。公式資料：[Streamlit audio_input](https://docs.streamlit.io/develop/api-reference/widgets/st.audio_input)、[faster-whisper](https://github.com/SYSTRAN/faster-whisper)、[モデル配布元](https://huggingface.co/Systran/faster-whisper-small)。認識精度・実マイク確認は[受入結果](../testing/acceptance-tests.md)と区別します。

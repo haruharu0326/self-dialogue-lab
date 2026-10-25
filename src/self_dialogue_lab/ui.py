@@ -11,6 +11,7 @@ from .presentation import nature_stylesheet
 from .simple_chat import render_conversation
 from .store import Store
 from .service import converse_personal
+from .voice_ui import clear_voice, render_voice_input
 
 
 def _render():
@@ -63,7 +64,10 @@ def _render():
             st.caption('会話を消しても、覚えた回答は残ります。元には戻せません。')
             confirmed = st.checkbox('会話履歴を削除してよい')
             if st.button('会話履歴を削除', disabled=not confirmed):
-                attempt(store.clear_conversations, '会話履歴を削除しました。覚えた回答は残っています。')
+                def clear_conversation():
+                    store.clear_conversations()
+                    clear_voice()
+                attempt(clear_conversation, '会話履歴を削除しました。覚えた回答は残っています。')
 
         if notice := st.session_state.pop('simple_notice', None):
             st.success(notice)
@@ -79,11 +83,13 @@ def _render():
             st.write('いま迷っていることや、うまく言葉にならないことから、話してみてください。')
 
         consent = st.session_state.get('simple_consent', False)
+        def send_message(message):
+            with st.spinner('考えを整理しています…'):
+                converse_personal(store, GeminiResponder(), message, consent=consent)
+
+        render_voice_input(send_message, attempt, enabled=configured and consent)
         if message := st.chat_input('いま、どんなことを考えていますか？', disabled=not configured or not consent):
-            def send():
-                with st.spinner('考えを整理しています…'):
-                    converse_personal(store, GeminiResponder(), message, consent=consent)
-            attempt(send)
+            attempt(lambda: send_message(message))
     finally:
         store.db.close()
 

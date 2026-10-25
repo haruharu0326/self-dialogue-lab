@@ -3,12 +3,15 @@
 import json
 import streamlit as st
 
+from .sentiment_ui import render_tone
+
 
 def render_conversation(store, attempt):
     rows = store.rows('SELECT r.*,m.body AS source FROM responses r JOIN messages m ON m.id=r.message_id ORDER BY r.id')
     for response in rows:
         with st.chat_message('user'):
             st.write(response['source'])
+            render_tone(response['source'], response['id'])
             candidates = store.rows('SELECT * FROM candidates WHERE message_id=?', (response['message_id'],))
             if candidates:
                 candidate = candidates[0]

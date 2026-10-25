@@ -12,6 +12,7 @@ dependencies = ["streamlit>=1.40,<2"]
 [project.optional-dependencies]
 dev = ["pytest>=8,<10"]
 sentiment = ["transformers>=4.45,<5", "torch>=2.4,<3", "safetensors>=0.4,<1"]
+voice = ["faster-whisper>=1.2,<2", "huggingface-hub>=0.34,<1"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

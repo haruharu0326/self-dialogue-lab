@@ -77,3 +77,56 @@ python -m venv .venv
 テスト：`python -m pytest -q --basetemp=.test-temp`
 
 従来の管理・モック・分析機能は検証用の `streamlit run src/lab.py` に分離しました。通常利用では不要です。構成・詳細要件・過去機能の仕様は[文書一覧](docs/README.md)、確認済みと未確認の区別は[受入テスト](docs/testing/acceptance-tests.md)を参照してください。
+
+## 文章のトーン分析（任意）
+
+各本人発言の「文章のトーン（任意）」から3分類を実行できます。本人の気持ちの断定ではなく文章からの推定です。結果は保存・Gemini送信せず、画面の再表示で消えます。モデルのスコアは感情の確率として表示しません。
+
+Dockerでは `.env` に次を追加します（APIキーは変更不要）。
+
+```dotenv
+INSTALL_SENTIMENT=true
+SENTIMENT_MODEL_PATH=/app/models/sentiment
+```
+
+```powershell
+docker compose build app
+docker compose run --rm --no-deps app python -m self_dialogue_lab.sentiment --prepare
+docker compose up -d --force-recreate app
+```
+
+初回の依存・モデル取得には通信とディスク容量が必要です。取得処理は会話を読みません。モデルは専用ボリュームに保存され、分析時はローカルファイルだけを使用します。取得に失敗した場合は設定・通信・保存先を確認して同じ取得コマンドを再実行してください。
+
+Python直接起動の場合：
+
+```powershell
+python -m pip install -e ".[dev,sentiment]"
+$env:SENTIMENT_MODEL_PATH = "$PWD/models/sentiment"
+python -m self_dialogue_lab.sentiment --prepare
+python -m streamlit run src/app.py
+```
+
+モデルは既存の [multilingual sentiment student](https://huggingface.co/lxyuan/distilbert-base-multilingual-cased-sentiments-student) を固定リビジョンで取得します。実際の日本語分類精度は未評価です。長文は先頭512トークンまでを対象とします。
+
+## 音声入力（任意）
+
+「音声で入力（任意）」を開いてマイクを許可し、60秒以内の日本語を録音してください。「文字起こし」後に文章を確認・編集し、「この文章を送信」を押します。録音だけで自動送信されません。音声はPC内で処理し、ファイルやDBへ保存しません。送信した文章は通常の会話として保存・Gemini送信します。誤認識は必ず確認してください。
+
+Dockerでは `.env` に次を追加し、既存のAPIキー・分析設定は維持します。
+
+```dotenv
+INSTALL_VOICE=true
+VOICE_MODEL_PATH=/app/models/voice
+```
+
+```powershell
+docker compose build app
+docker compose run --rm --no-deps app python -m self_dialogue_lab.voice --prepare
+docker compose up -d --force-recreate app
+```
+
+初回は依存と約486MBのモデルを取得します。取得処理は会話・録音を読みません。モデルはモデル用ボリュームに保持され、文字起こし時に外部へ音声を送りません。利用するのは[Systran/faster-whisper-small](https://huggingface.co/Systran/faster-whisper-small)の固定リビジョンです。
+
+直接起動の場合は `python -m pip install -e ".[dev,voice]"`、`$env:VOICE_MODEL_PATH = "$PWD/models/voice"`、`python -m self_dialogue_lab.voice --prepare` を実行してからStreamlitを起動します。
+
+マイクは `http://localhost:8501` または `http://127.0.0.1:8501` で使用してください。リモート接続はHTTPSとブラウザのマイク権限が必要です。認識できない場合は短く録音し直すか手入力を使えます。「録音と下書きを破棄」でやり直せます。文字起こしはCPUで動くため、録音の長さやPCにより待ち時間が変わります。

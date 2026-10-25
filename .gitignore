@@ -3,6 +3,7 @@ __pycache__/
 .pytest_cache/
 data/
 .test-temp*/
+.test-deps/
 *.egg-info/
 build/
 dist/
@@ -28,3 +29,8 @@ secrets.toml
 *.key
 *.p12
 *.log
+*.wav
+*.mp3
+*.m4a
+*.ogg
+*.webm
