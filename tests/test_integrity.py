@@ -185,7 +185,7 @@ def test_document_paths_and_relative_links_exist():
     expected = {
         'README.md', 'requirements/requirements-definition.md', 'requirements/functional-requirements.md',
         'requirements/non-functional-requirements.md', 'design/external-design.md', 'design/internal-design.md',
-        'testing/acceptance-tests.md', 'development/harness-plan.md',
+        'testing/acceptance-tests.md', 'development/harness-plan.md', 'requirements/thinking-and-writing.md',
     }
     assert {p.relative_to(ROOT/'docs').as_posix() for p in (ROOT/'docs').rglob('*.md')} == expected
     for file in [ROOT/'README.md', *(ROOT/'docs').rglob('*.md')]:

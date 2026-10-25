@@ -1,6 +1,99 @@
 # 内部設計書
 
-通常製品の実装を説明します。画面は[外部設計](external-design.md)、機能の受入条件は[機能要件](../requirements/functional-requirements.md)を正本とします。アーキテクチャ図は後日作成予定で、今回は追加しません。
+通常製品の実装を説明します。画面は[外部設計](external-design.md)、機能の受入条件は[機能要件](../requirements/functional-requirements.md)を正本とします。
+
+## アーキテクチャ図（現行実装）
+
+2026-10-25時点のコードを表す図です。Mermaid対応のMarkdownビューアーで表示できます。開発方針にある初版の「モック・固定応答」とは異なり、現在の通常入口にはGeminiへの実通信が実装されています。以下は実装の説明であり、初版の対象範囲を変更するものでも、実接続や対話品質を確認した記録でもありません。
+
+```mermaid
+flowchart TB
+    user[利用者]
+    subgraph pc[利用者のPC]
+        subgraph browser[ブラウザ]
+            ui[React / TypeScript\nApp・Conversation・Sidebar]
+            recording[VoiceInput / recorder.ts\n録音・WAV変換・下書き確認]
+            client[api.ts]
+            ui --> client
+            recording --> client
+        end
+        subgraph server[Pythonサーバー：直接起動またはDocker]
+            entry[src/app.py / uvicorn\n既定 127.0.0.1:8501]
+            api[api.py / FastAPI\nHost・Origin検査／入力検証／例外変換]
+            static[ビルド済み画面・ローカル背景画像]
+            service[service.py\n送信確認・現在の記憶・直近10往復\n応答検証後の一括保存]
+            responder[gemini.py / GeminiResponder\nREST通信・出力形式と参照ID検証]
+            store[store.py / Store\n状態遷移・トランザクション・削除]
+            tone[sentiment.py：任意\nローカル3分類]
+            voice[voice.py：任意\nローカル文字起こし]
+            entry --> api
+            api --> static
+            api --> service
+            service --> responder
+            service --> store
+            api -->|状態取得・承認・拒否・削除| store
+            api -->|保存済み本人発言| tone
+            api -->|WAV：処理中のメモリのみ| voice
+        end
+        db[(SQLite：personal.sqlite3\n会話・候補・承認済み記憶)]
+        models[(事前取得済みモデル\nトーン用／音声用)]
+        client -->|同一オリジン HTTP /api/*| api
+        static -->|画面・画像を配信| ui
+        store --> db
+        tone --> models
+        voice --> models
+    end
+    google[Google Gemini API\nPC外]
+    user --> ui
+    user --> recording
+    responder -->|HTTPS：発言・現在の記憶・会話文脈| google
+    google -->|生成結果| responder
+```
+
+画面はDBへ直接アクセスせず、APIを介して操作します。トーン分類結果と文字起こしの下書きは画面のメモリで扱い、分析結果・音声をDBやGeminiへ保存・送信しません。文字起こし後に本人が確認して送信した文章は、通常の発言として保存・Gemini送信の対象になります。モデル取得時だけ別途外部通信が必要です。設定とモデル取得の詳細は[設定と起動](#設定と起動)、[音声入力](#音声入力)、[文章トーン分析](#通常画面の文章トーン分析)を参照してください。
+
+### 対話と承認の流れ
+
+```mermaid
+sequenceDiagram
+    actor U as 利用者
+    participant UI as React画面
+    participant API as FastAPI
+    participant S as service
+    participant DB as Store / SQLite
+    participant G as GeminiResponder / Gemini API
+    U->>UI: 発言・送信確認
+    UI->>API: POST /api/messages
+    API->>S: converse_personal
+    S->>DB: 現在の記憶・直近10往復を取得
+    DB-->>S: 承認済みで現在有効な記憶・会話文脈
+    S->>G: 発言・記憶・会話文脈
+    G-->>S: 形式・参照IDを検証済みのReply
+    S->>DB: 発言・返答・pending候補を一括保存
+    API-->>UI: 更新後の画面状態
+    U->>UI: 候補を確認・編集して覚える
+    UI->>API: POST /api/candidates/{id}/approve
+    API->>DB: BEGIN IMMEDIATE → pending確認
+    DB->>DB: records追加・approved更新 → COMMIT
+    API-->>UI: 更新後の画面状態
+```
+
+送信確認・入力検証に失敗した場合は応答器を呼びません。応答取得・検証に失敗した場合は会話の保存へ進みません。承認は原子的に行い、処理済み候補の再処理を拒否します。未承認・拒否候補は長期記憶に含めませんが、元発言は短期の会話文脈に含まれ得ます。削除の境界と過去の参照の写しは[現在の記憶](#現在の記憶)、[状態遷移とトランザクション](#状態遷移とトランザクション)を参照してください。
+
+### 開発・検証用の構成
+
+```mermaid
+flowchart LR
+    vite[Vite開発サーバー\n127.0.0.1:5173] -->|/apiを8501へ中継| api[通常のFastAPI]
+    lab[src/lab.py\n任意依存のStreamlit] --> labui[lab_ui.py / chat_ui.py]
+    labui --> mock[MockResponder\nモック・固定応答]
+    labui --> gemini[GeminiResponder\n明示的な送信確認]
+    labui --> store[Store]
+    store --> sample[(サンプル専用DB\nseededで一度だけ投入)]
+    store --> personal[(本人用DB\nサンプル投入なし)]
+```
+
+検証用画面は通常画面とは別入口で、サンプル領域と本人データを分けます。詳細は[検証用機能](#検証用機能)に集約します。Dockerでは画面をビルドしてPythonイメージへ同梱し、DBは`app-data`、任意モデルは`sentiment-models`の別ボリュームに保持します。将来の思考深化・文書化は[将来要件](../requirements/thinking-and-writing.md)であり、図の実装済み構成には含めません。
 
 ## 構成と責務
 
