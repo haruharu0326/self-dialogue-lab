@@ -22,7 +22,7 @@ flowchart TB
         subgraph server[Pythonサーバー：直接起動またはDocker]
             entry[src/app.py / uvicorn\n既定 127.0.0.1:8501]
             api[api.py / FastAPI\nHost・Origin検査／入力検証／例外変換]
-            static[ビルド済み画面・ローカル背景画像]
+            static[ビルド済みReact画面]
             service[service.py\n送信確認・現在の記憶・直近10往復\n応答検証後の一括保存]
             responder[gemini.py / GeminiResponder\nREST通信・出力形式と参照ID検証]
             store[store.py / Store\n状態遷移・トランザクション・削除]
@@ -30,17 +30,19 @@ flowchart TB
             voice[voice.py：任意\nローカル文字起こし]
             entry --> api
             api --> static
-            api --> service
-            service --> responder
+            api -->|発言・任意のtone_context| service
+            service -->|発言・記憶・履歴・任意のtone_context| responder
             service --> store
             api -->|状態取得・承認・拒否・削除| store
-            api -->|保存済み本人発言| tone
+            api -->|表示用：保存済み本人発言| tone
+            api -->|送信時：include_tone有効なら今回の文章| tone
+            tone -->|分類・スコア：送信時だけ補助情報に使用| api
             api -->|WAV：処理中のメモリのみ| voice
         end
         db[(SQLite：personal.sqlite3\n会話・候補・承認済み記憶)]
         models[(事前取得済みモデル\nトーン用／音声用)]
         client -->|同一オリジン HTTP /api/*| api
-        static -->|画面・画像を配信| ui
+        static -->|画面を配信| ui
         store --> db
         tone --> models
         voice --> models
@@ -48,11 +50,11 @@ flowchart TB
     google[Google Gemini API\nPC外]
     user --> ui
     user --> recording
-    responder -->|HTTPS：発言・現在の記憶・会話文脈| google
+    responder -->|HTTPS：発言・現在の記憶・会話文脈・任意の分類とスコア| google
     google -->|生成結果| responder
 ```
 
-画面はDBへ直接アクセスせず、APIを介して操作します。トーン分類結果と文字起こしの下書きは画面のメモリで扱い、分析結果・音声をDBやGeminiへ保存・送信しません。文字起こし後に本人が確認して送信した文章は、通常の発言として保存・Gemini送信の対象になります。モデル取得時だけ別途外部通信が必要です。設定とモデル取得の詳細は[設定と起動](#設定と起動)、[音声入力](#音声入力)、[文章トーン分析](#通常画面の文章トーン分析)を参照してください。
+画面はDBへ直接アクセスせず、APIを介して操作します。トーン分類結果と文字起こしの下書きは画面のメモリで扱い、表示用の分析結果・音声をDBやGeminiへ保存・送信しません。送信時の分類結果を任意で渡す場合は[送信時のトーン補助](#送信時のトーン補助)を参照。文字起こし後に本人が確認して送信した文章は、通常の発言として保存・Gemini送信の対象になります。モデル取得時だけ別途外部通信が必要です。設定とモデル取得の詳細は[設定と起動](#設定と起動)、[音声入力](#音声入力)、[文章トーン分析](#通常画面の文章トーン分析)を参照してください。
 
 ### 対話と承認の流れ
 
@@ -61,17 +63,26 @@ sequenceDiagram
     actor U as 利用者
     participant UI as React画面
     participant API as FastAPI
+    participant T as sentiment.analyze / PC内
     participant S as service
     participant DB as Store / SQLite
     participant G as GeminiResponder / Gemini API
-    U->>UI: 発言・送信確認
-    UI->>API: POST /api/messages
-    API->>S: converse_personal
+    U->>UI: 発言・送信確認・任意のトーン送信選択
+    UI->>API: POST /api/messages（text, consent, include_tone）
+    API->>API: 送信確認・非空入力を検証
+    opt include_toneがtrue
+        API->>API: 分析モデルの設定を確認
+        API->>T: 今回実際に送る文章を分析
+        T-->>API: 分類・スコア
+    end
+    Note over API,T: 未確認・空白・設定不備・分析失敗では送信・保存せず終了
+    API->>S: converse_personal（任意のtone_context）
     S->>DB: 現在の記憶・直近10往復を取得
     DB-->>S: 承認済みで現在有効な記憶・会話文脈
-    S->>G: 発言・記憶・会話文脈
+    S->>G: 発言・記憶・会話文脈・任意のtone_context
     G-->>S: 形式・参照IDを検証済みのReply
     S->>DB: 発言・返答・pending候補を一括保存
+    Note over S,DB: 分析結果自体は保存・次回履歴に含めない。返答本文は残る
     API-->>UI: 更新後の画面状態
     U->>UI: 候補を確認・編集して覚える
     UI->>API: POST /api/candidates/{id}/approve
@@ -93,6 +104,10 @@ flowchart LR
     labui --> store[Store]
     store --> sample[(サンプル専用DB\nseededで一度だけ投入)]
     store --> personal[(本人用DB\nサンプル投入なし)]
+    evalcli[scripts/evaluate.py / evaluation.py] --> cases[版付きの架空ケース]
+    evalcli -->|既定：モック・固定応答| evalmock[MockResponder]
+    evalcli -->|明示的な --live 指定時のみ| gemini
+    evalcli --> output[Git対象外の評価JSON\n人の採点・条件比較]
 ```
 
 検証用画面は通常画面とは別入口で、サンプル領域と本人データを分けます。詳細は[検証用機能](#検証用機能)に集約します。Dockerでは画面をビルドしてPythonイメージへ同梱し、DBは`app-data`、任意モデルは`sentiment-models`の別ボリュームに保持します。将来の思考深化・文書化は[将来要件](../requirements/thinking-and-writing.md)であり、図の実装済み構成には含めません。
@@ -140,7 +155,7 @@ flowchart LR
 |メソッドとパス|入力|処理・出力|
 |---|---|---|
 |GET /api/state|なし|configured / voiceConfigured / toneConfigured（設定の有無だけ。値は返さない）、exchanges（応答ID昇順の発言・候補の状態・返答・参照の写しの考え）、memories（現在の記憶）|
-|POST /api/messages|text, consent|converse_personal。未確認・空白は400で応答器を呼ばない|
+|POST /api/messages|text, consent, include_tone（既定false）|converse_personal。未確認・空白は400。トーン送信時の境界は[送信時のトーン補助](#送信時のトーン補助)を参照|
 |POST /api/candidates/{id}/approve|thought|Store.approve。理由は空、文脈は定型文。処理済み・空白は400|
 |POST /api/candidates/{id}/reject|なし|Store.reject。処理済みは400|
 |DELETE /api/memories/{id}|なし|Store.delete_record。見つからなければ400|
@@ -207,7 +222,7 @@ current_records()はsuperseded=0の行を日時・ID降順で返します。通�
 
 ## Geminiの内部契約
 
-`GeminiResponder.respond(message, scenario, records, correction_of=None, change_from=None, history=None, demo=False) → Reply`。
+`GeminiResponder.respond(message, scenario, records, correction_of=None, change_from=None, history=None, demo=False, tone_context=None) → Reply`。
 
 Replyはinterpretation（本文）、question（問い）、references（DB由来の記録写し）。通常のconverse_personalはdemo=Falseで呼び、scenario選択や明示訂正IDをユーザーに求めません。訂正は通常の発言として会話文脈へ入ります。
 
@@ -254,7 +269,7 @@ Dockerはnode:24-slimの段で `npm ci` と画面のビルドを行い、生成�
 
 入口は `src/lab.py → lab_ui.py`。Streamlitで動き、依存は任意の `lab` 追加依存です（通常の起動・Dockerイメージには含めません）。モックシナリオA〜E、サンプル領域、詳細な記録編集・変化リンク、候補管理、応答評価、JSON出力、手動参照選択、任意センチメントが残っています。通常UIからのリンクやモード切替はなく、通常の利用に不要です。
 
-関連コードはlab_ui.py、chat_ui.py、responder.pyのMockResponder、sentiment.py。サンプルは架空JSONで、通常DBへ投入しません。センチメントは任意依存と事前取得モデルを使うローカル推論で、結果をDBやGeminiへ渡しません。通常画面でも任意の文章トーン分析として利用します（[FR-025](../requirements/functional-requirements.md#fr-025-文章のトーンを分析する)）。
+関連コードはlab_ui.py、chat_ui.py、responder.pyのMockResponder、sentiment.py。サンプルは架空JSONで、通常DBへ投入しません。センチメントは任意依存と事前取得モデルを使うローカル推論で、検証用の結果をDBやGeminiへ渡しません。通常画面でも任意の文章トーン分析として利用します（[FR-025](../requirements/functional-requirements.md#fr-025-文章のトーンを分析する)）。
 
 Store.exportの検証用出力はUTF-8のJSON配列で、recordsのid/thought/reason/context/occurred/previous_id/supersededを一覧順に出します。空は[]。会話・候補・評価は含みません。
 
@@ -299,3 +314,9 @@ VoiceInput → recorder.ts → POST /api/voice/transcribe → voice.transcribe�
 「録音する／録音し直す」で以前の録音と下書きをクリア。成功送信・「録音と下書きを破棄」で部品の状態を消し、会話削除では世代番号を上げて部品ごと作り直します。部品が消えるときは録音中のマイクも解放します。失敗した送信では下書きを残し、自動再試行しません。ブラウザやOSの録音バッファの完全消去は保証しません。
 
 依存はpyproject.tomlのvoice追加依存。faster-whisperのデコーダーとの互換性のためPyAVを14以上17未満に制限します（19.0.2ではmetadata_errors引数の非対応を確認）。Dockerfileとcompose.yamlで任意導入し、初回取得後はオフラインで文字起こし可能です。設定手順は[README](../../README.md#音声入力任意)。公式資料：[MediaRecorder](https://developer.mozilla.org/ja/docs/Web/API/MediaRecorder)、[OfflineAudioContext](https://developer.mozilla.org/ja/docs/Web/API/OfflineAudioContext)、[faster-whisper](https://github.com/SYSTRAN/faster-whisper)、[モデル配布元](https://huggingface.co/Systran/faster-whisper-small)。認識精度・実マイク確認は[受入結果](../testing/acceptance-tests.md)と区別します。
+
+## 送信時のトーン補助
+
+POST /api/messagesのinclude_toneは既定false。trueでは同意・非空入力を検証後、今回の文章を設定済み分類器へ渡します。未設定・推論失敗は422。serviceはtone_contextをGeminiResponderへ渡し、アダプターは分類名と有限の0〜1スコアを検証し、source=local_text_classifier、max_input_tokens=512を付けてJSONに含めます。追加フィールドは除外。OFFでは従来の呼び出しを維持します。
+
+本人の明示的な発言と訂正を優先し、スコアを感情の強さとせず、声色・人格を推定しない指示を追加。現在の相談への具体的な返答と一つの問いを促します。結果自体は保存処理へ渡さず後続履歴にも含めません。返答に反映された表現は会話に残ります。
