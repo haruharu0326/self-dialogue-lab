@@ -1,6 +1,6 @@
 # 文書一覧
 
-現在の製品は、**対話を中心に、自分の回答を覚えて次の対話に活かすチャットボット**です。通常入口は `src/app.py`。この7文書を現在仕様の正本とし、以前の多機能画面を前提とした仕様への追記は残しません。
+現在の製品は、**対話を中心に、自分の回答を覚えて次の対話に活かすチャットボット**です。通常入口は `src/app.py`（FastAPIのAPIサーバー）で、画面は `frontend/` のReactです。この7文書を現在仕様の正本とし、以前の多機能画面を前提とした仕様への追記は残しません。
 
 ## 読む順序と各文書の役割
 
@@ -17,27 +17,29 @@
 
 ## 要件・設計・実装・テストの対応
 
+開発環境の改善は[開発ハーネスの現状と導入案](development/harness-plan.md)を参照してください。製品機能とは分けて、現状の不足・規約との不整合・検証結果・導入順を記載しています。
+
 現行FR-018,019とAT-032,033の番号は維持しています。新規の番号を追加し、旧番号を別機能へ再利用しません。
 
 |要件|外部設計|実装・内部設計|受入テスト|
 |---|---|---|---|
-|FR-018 対話|SCR-004・入力と履歴|ui.py / service.converse_personal / gemini.py|AT-032,039,040|
-|FR-019 回答を覚える|本人発言の折りたたみ|simple_chat.py / Store.approve, reject|AT-033|
-|FR-020 参照の確認|返答の参照欄|GeminiResponder / responses.refs|AT-034|
-|FR-021 記憶を見る・忘れる|サイドバーの記憶|Store.current_records, delete_record|AT-035|
-|FR-022 会話を消す|サイドバーの削除|Store.clear_conversations|AT-036|
-|FR-023 接続と送信確認|接続案内・確認チェック|ui.py / compose.yaml|AT-037,038,040|
-|FR-024 エラー通知|エラー表示|GeminiError / ui.run / scripts/check_gemini.py|AT-037,039,044|
-|FR-025 文章トーン3分類|本人発言の任意操作|sentiment_ui.py / sentiment.py / Dockerfile / compose.yaml|AT-045|
-|FR-026 音声入力|録音→文字起こし→確認編集→送信|voice_ui.py / voice.py / ui.py / Dockerfile / compose.yaml|AT-046|
-|NFR-001,002 実行環境・ローカル|起動・設定|Dockerfile / compose.yaml|AT-040|
+|FR-018 対話|SCR-004・入力と履歴|App.tsx / Conversation.tsx / api.py POST /api/messages / service.converse_personal / gemini.py|AT-032,039,040|
+|FR-019 回答を覚える|本人発言の折りたたみ|Conversation.tsx / api.py approve, reject / Store.approve, reject|AT-033|
+|FR-020 参照の確認|返答の参照欄|Conversation.tsx / GeminiResponder / responses.refs|AT-034|
+|FR-021 記憶を見る・忘れる|サイドバーの記憶|Sidebar.tsx / api.py DELETE /api/memories / Store.current_records, delete_record|AT-035|
+|FR-022 会話を消す|サイドバーの削除|Sidebar.tsx / api.py DELETE /api/conversations / Store.clear_conversations|AT-036|
+|FR-023 接続と送信確認|接続案内・確認チェック|App.tsx / Sidebar.tsx / api.py / compose.yaml|AT-037,038,040|
+|FR-024 エラー通知|エラー表示|GeminiError / api.pyの例外ハンドラー / api.ts / scripts/check_gemini.py|AT-037,039,044|
+|FR-025 文章トーン3分類|本人発言の任意操作|Conversation.tsx / api.py POST /api/exchanges/{id}/tone / sentiment.py / Dockerfile / compose.yaml|AT-045|
+|FR-026 音声入力|録音→文字起こし→確認編集→送信|VoiceInput.tsx / recorder.ts / api.py POST /api/voice/transcribe / voice.py / Dockerfile / compose.yaml|AT-046|
+|NFR-001,002 実行環境・ローカル|起動・設定|Dockerfile / compose.yaml / app.py / api.pyのHost・Origin確認|AT-040|
 |NFR-003 性能|通常操作|未測定|AT-041|
 |NFR-004,005 永続性・整合性|覚える・忘れる・削除|SQLite / Store.transaction|AT-033,035,036,042|
-|NFR-006,009 エラー・ログ|共通通知|gemini.py / ui.py|AT-039|
+|NFR-006,009 エラー・ログ|共通通知|gemini.py / api.py / app.py（アクセスログ無効）|AT-039|
 |NFR-007,008 秘密・外部送信|送信範囲案内・分析結果の非送信|.gitignore / GeminiResponder / sentiment.py|AT-037,038,045|
 |NFR-010 削除の範囲|記憶と会話の別操作|records / 会話関連テーブル|AT-035,036|
-|NFR-011 分かりやすさ|SCR-004・自然背景・任意分析|simple_chat.py / sentiment_ui.py / assets/nature.css|AT-032,043,045|
-|NFR-012,013 分離・交換性|対象外|service / store / GeminiResponder|AT-032〜034,039|
+|NFR-011 分かりやすさ|SCR-004・自然背景・任意分析|frontend/src/styles.css / components / assets/lake-dawn.png|AT-032,043,045|
+|NFR-012,013 分離・交換性|対象外|frontend / api / service / store / GeminiResponder|AT-032〜034,039|
 
 音声入力の非保存・送信確認・エラー・下書き状態の境界はNFR-006〜010,012とAT-046にも対応します。モデルや設定の詳細は[内部設計の音声入力](design/internal-design.md#音声入力)、手順は[プロジェクトREADME](../README.md#音声入力任意)を参照してください。
 

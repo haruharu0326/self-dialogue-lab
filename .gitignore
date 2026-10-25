@@ -34,3 +34,5 @@ secrets.toml
 *.m4a
 *.ogg
 *.webm
+node_modules/
+src/self_dialogue_lab/static/

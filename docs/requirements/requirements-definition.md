@@ -39,7 +39,7 @@ Geminiが質問や別の視点を返し、本人が必要だと判断した回�
 
 任意の文章トーン分析を通常画面に追加します。機能の入出力・保存境界は[FR-025](functional-requirements.md#fr-025-文章のトーンを分析する)、モデルと配置は[内部設計](../design/internal-design.md#通常画面の文章トーン分析)を正本とします。
 
-Python / Streamlit / SQLite / pytestによるローカル単一ユーザーのアプリ。Geminiとのテキスト対話、回答の確認保存・拒否、記憶の閲覧・削除、会話履歴、送信範囲と設定の案内、自然風景の背景を提供します。機能詳細は[機能要件書](functional-requirements.md)に集約します。
+Python（FastAPI）/ React（Vite・TypeScript）/ SQLite / pytest・Vitestによるローカル単一ユーザーのアプリ。画面はReact、業務処理・DB・応答器はPythonのAPIサーバーに置き、同じ127.0.0.1:8501で配信します。2026-10-25に通常画面をStreamlitから移行しました（検証用のsrc/lab.pyはStreamlitのまま）。Geminiとのテキスト対話、回答の確認保存・拒否、記憶の閲覧・削除、会話履歴、送信範囲と設定の案内、自然風景の背景を提供します。機能詳細は[機能要件書](functional-requirements.md)に集約します。
 
 通常入口は `src/app.py`。本人用DBだけを使い、架空サンプルを自動投入しません。旧データは削除しません。従来の管理・シナリオ・分析機能は `src/lab.py` の検証用に分離し、通常製品の必須操作には含めません。
 

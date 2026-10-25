@@ -4,7 +4,7 @@
 
 ## テストの前提と判定
 
-自動テストは一時的な本人用DBを使用し、実際のキー・個人データを使いません。AppTestはStreamlit導入時だけ実行。skipは合格ではありません。自動部分のみ通ったケースは、UIまで合格と表現しません。
+自動テストは一時的な本人用DBを使用し、実際のキー・個人データを使いません。通常画面はVitest + Testing Library（APIは代替）、HTTP APIはFastAPIのTestClient（応答器・分類器・文字起こしは代替）で検証します。検証用src/lab.pyのAppTestはStreamlit導入時だけ実行。skipは合格ではありません。自動部分のみ通ったケースは、UIまで合格と表現しません。
 
 FR-018,019に対応するAT-032,033の番号は維持。AT-001〜031は過去の検証用・共通バックエンドの補助テストとして番号を留保し、現在の製品UIの合格判定に流用しません。
 
@@ -25,14 +25,14 @@ FR-018,019に対応するAT-032,033の番号は維持。AT-001〜031は過去の
 |AT-040 / FR-018,023,NFR-001,002|Docker、.env、利用可能なGeminiキー|build/up→ps/health→ブラウザ→送信確認→短い接続テスト|アプリ起動、画面表示、確認後にAPI返答。3段階を別に判定|ユーザー提供ログでビルド・コンテナ作成成功。ユーザー実機で返答と次の会話の記憶参照を確認。エージェントの直接目視・health検査は未確認|
 |AT-041 / NFR-003|会話100往復、記憶100件|同じPCで10回の保存・表示を測定、API待ち時間を分離|中央値・最大・環境を記録し暫定目標と比較|手動、未実施。性能保証なし|
 |AT-042 / NFR-004|保存済み記憶・会話・候補|別Pythonプロセスで再取得→Dockerでも再作成後に確認|同じ内容が残る。Dockerの通常downでボリュームが残る|別プロセス検証成功。Docker再作成による保持は未確認|
-|AT-043 / NFR-011|通常UI、同梱風景|1440px・390pxで会話・保存・参照・サイドバー操作|写真上でも読みやすい、過剰な管理操作なし、モバイルでも入力・確認可能|素材単体確認のみ。実画面・コントラスト測定は未実施|
+|AT-043 / NFR-011|通常UI、同梱風景|1440px・390pxで会話・保存・参照・サイドバー操作|写真上でも読みやすい、過剰な管理操作なし、モバイルでも入力・確認可能|React移行後、架空データでヘッドレスEdgeの1366px・390pxの静止画面を確認。実ブラウザでの操作・コントラスト測定は未実施|
 |AT-044 / FR-024,NFR-007〜009|ダミーキー、資格情報を含むプロキシ設定、生エラーを含む代替通信|接続診断で403とURLError、キー未設定を再現|キー・プロキシURL・生エラーは出さず、分類と設定有無だけ表示。キーなしなら送信しない|tests/test_connection_check.pyの3条件成功。実コンテナでの診断結果待ち|
 
 ### AT-045：文章トーンの任意分析
 
 |対応要件|事前条件|手順|期待結果|実施状況|
 |---|---|---|---|---|
-|FR-025 / NFR-007,008,011|本人発言、未設定環境、代替分類器、取得済み実モデル|未設定表示→手動分析→成功・失敗→再表示→会話削除・ID再利用。別コンテナでネットワークを無効化して実モデルを実行|未設定時は無効。自動分析なし。結果は非保存・非送信で再表示時に消失。安全な失敗通知。実モデルがローカルだけで動作|代替分類器の境界・画面テスト、実モデル推論・画面部品AppTestに成功。精度評価と実ブラウザ目視は未実施|
+|FR-025 / NFR-007,008,011|本人発言、未設定環境、代替分類器、取得済み実モデル|未設定表示→手動分析→成功・失敗→会話削除・ID再利用。別コンテナでネットワークを無効化して実モデルを実行|未設定時は無効。自動分析なし。結果は非保存・非送信で、再読み込み・会話削除で消失。安全な失敗通知。実モデルがローカルだけで動作|代替分類器の境界・画面テスト成功。実モデル推論はStreamlit版で成功（React移行後の実モデル画面確認は未実施）。精度評価と実ブラウザ目視は未実施|
 
 ## 実装・自動テストとの対応
 
@@ -40,30 +40,68 @@ FR-018,019に対応するAT-032,033の番号は維持。AT-001〜031は過去の
 
 |対応要件|事前条件・手順|期待結果|検証方法|
 |---|---|---|---|
-|FR-026 / NFR-006〜010,012|モデル未設定で起動、録音→文字起こし→編集→送信確認→送信|手入力は継続可能。文字起こしだけではDB保存・API呼出しなし。編集した文字列だけを送信し、候補はpendingのまま|tests/test_voice_ui.pyの通常入口AppTestと代替応答器|
+|FR-026 / NFR-006〜010,012|モデル未設定で起動、録音→文字起こし→編集→送信確認→送信|手入力は継続可能。文字起こしだけではDB保存・API呼出しなし。編集した文字列だけを送信し、候補はpendingのまま|frontend/src/App.test.tsx（代替録音・代替API）とtests/test_api.py::test_voice_transcription_never_sends_or_stores|
 |FR-026 / NFR-006,009|空・不正・切断・無音・長すぎる・形式違いの録音、推論と遅延走査の失敗|モデル呼出し前の境界検証、安全な通知。生エラー・録音・部分結果を表示しない|tests/test_voice.py|
-|FR-026 / NFR-005,010|新録音・破棄・送信成功・送信失敗・会話削除・再表示|古い下書きを無効化。成功送信は一度だけ、失敗では下書き保持。会話削除で下書きも消失|tests/test_voice_ui.py|
+|FR-026 / NFR-005,010|新録音・破棄・送信成功・送信失敗・会話削除|古い下書きを無効化。成功送信は一度だけ、失敗では下書き保持。会話削除で下書きも消失|frontend/src/App.test.tsx|
 |FR-026 / NFR-008|事前取得後、ネットワークを切ってモデル読み込み・短い架空音声を文字起こし|ローカルファイルだけで推論。外部音声送信なし|実モデル確認は実施記録を参照。マイク権限・実ブラウザ録音・日本語認識精度は別判定|
 
-AT-045 / FR-025,NFR-007,008,011：保存済み本人発言について、モデル未設定で分析ボタン無効、設定時も手動クリック前は分析しないことを確認。代替分析器の成功・失敗を表示し、再表示・会話削除・ID再利用で古い結果を出さず、全DB内容が分析前後で不変であることを確認。tests/test_sentiment_ui.py、分類器境界はtests/test_sentiment.pyで検証。実モデルの精度・実ダウンロードとは分けて判定。
+AT-045 / FR-025,NFR-007,008,011：保存済み本人発言について、モデル未設定で分析ボタン無効・APIも分類器を呼ばない、設定時も手動クリック前は分析しないことを確認。代替分析器の成功・失敗を表示し、会話削除・ID再利用で古い結果を出さず、全DB内容が分析前後で不変で、状態APIに結果が含まれないことを確認。tests/test_api.py::test_tone_is_manual_ephemeral_and_does_not_modify_storage とfrontend/src/App.test.tsxのtone analysis、分類器境界はtests/test_sentiment.pyで検証。実モデルの精度・実ダウンロードとは分けて判定。
 
 |ケース|主なテスト（tests/配下）|
 |---|---|
-|032|test_simple_chat.py::test_personal_chat_without_consent_does_not_call_model / test_product_screen_has_no_lab_controls_or_sample_records|
-|033|test_simple_chat.py::test_answers_only_become_memory_after_user_confirmation|
+|032|test_simple_chat.py::test_personal_chat_without_consent_does_not_call_model / test_api.py::test_initial_state_is_empty_without_samples / test_consent_and_blank_input_are_checked_before_the_model / frontend App.test.tsx「shows only the conversation…」「requires consent…」|
+|033|test_simple_chat.py::test_answers_only_become_memory_after_user_confirmation / test_api.py::test_answer_becomes_memory_only_after_approval_and_only_once / frontend「remembers an edited answer…」|
 |034|test_gemini.py::test_only_selected_current_records_are_sent_and_refs_are_db_snapshots / test_invalid_remote_response_does_not_persist|
-|035|test_simple_chat.py::test_rejected_and_forgotten_answers_are_not_long_term_context / test_persistence.py::test_new_responses_exclude_changed_and_deleted_records|
-|036|test_persistence.py::test_clear_conversations_preserves_approved_records|
+|035|test_simple_chat.py::test_rejected_and_forgotten_answers_are_not_long_term_context / test_persistence.py::test_new_responses_exclude_changed_and_deleted_records / test_api.py::test_rejected_and_forgotten_answers_leave_long_term_context|
+|036|test_persistence.py::test_clear_conversations_preserves_approved_records / test_api.py::test_clearing_conversation_keeps_memories / frontend「forgets a memory and clears the conversation…」|
 |037|test_gemini.py::test_missing_key_consent_timeout_and_model_validation / test_simple_chat.py::test_personal_chat_without_consent_does_not_call_model|
 |038|test_gemini.py::test_gemini_conversation_context_and_source_separation / test_integrity.py::test_git_excludes_private_files_but_not_docs_or_samples|
-|039|test_gemini.py::test_http_errors_are_redacted_without_partial_save / test_invalid_remote_response_does_not_persist / test_integrity.py::test_approval_failure_rolls_back_record_and_historical_flag|
+|039|test_gemini.py::test_http_errors_are_redacted_without_partial_save / test_invalid_remote_response_does_not_persist / test_integrity.py::test_approval_failure_rolls_back_record_and_historical_flag / test_api.py::test_api_failure_is_redacted_and_saves_nothing / test_storage_errors_use_safe_messages|
 |042|test_persistence.py::test_records_conversation_and_feedback_survive_new_process / test_simple_chat.py::test_answers_only_become_memory_after_user_confirmation|
-|045|test_sentiment_ui.py::test_product_tone_is_manual_ephemeral_and_does_not_modify_storage / test_sentiment.py。実モデルのネットワーク無効化推論とAppTestは実施記録を参照|
-|046|test_voice.py / test_voice_ui.py。実モデルと実マイクの確認は実施記録を参照|
+|045|test_api.py::test_tone_is_manual_ephemeral_and_does_not_modify_storage / frontend「tone analysis」 / test_sentiment.py。実モデルのネットワーク無効化推論は実施記録を参照|
+|046|test_voice.py / test_api.py::test_voice_transcription_never_sends_or_stores / frontend「voice input」。実モデルと実マイクの確認は実施記録を参照|
+|NFR-002|test_api.py::test_only_local_browser_requests_are_accepted（Host・Originの拒否）|
 
 040,041,043の実環境部分を自動テスト成功から推定しません。検証用src/lab.pyの画面テストが通っても、通常UIの表示確認とは分けます。
 
 ## 実施記録
+
+### 開発ハーネスの一括検証（2026-10-25）
+
+製品FR/NFR/ATの追加・変更はありません。開発用の `python scripts/verify.py` を追加しました。[実行仕様と結果](../development/harness-plan.md#一括検証の実行仕様)を参照してください。Python 98件成功・7件スキップ（Streamlit未導入）、画面15件成功、型チェックを含むビルドと一時DBでの起動確認成功。スキップを完全成功と扱わず終了コード2でした。実ブラウザ・Docker・実API・実モデルは今回未確認です。
+
+### 通常画面のReact移行（2026-10-25）
+
+feature/react-frontendで通常画面をStreamlitからReact（Vite・TypeScript）とFastAPIへ移行。業務処理・DB・応答器・モデル連携は変更していません。旧画面のAppTest（通常入口のtest_simple_chat・test_sentiment_ui・test_voice_ui）はAPIテストと画面テストへ置き換えました。
+
+- Python：Windows / Python 3.13.7 / FastAPI 0.162.0。99成功、1失敗、スキップなし。失敗はtest_integrity.py::test_document_paths_and_relative_links_existで、同時期に別作業で追加されたdocs/development/harness-plan.mdが期待する文書一覧にないためです。React移行の変更による失敗ではありませんが、未解消として記録します。
+- 画面：Node.js 24.13.1 / React 19.3.1 / Vitest 5.0.5で15成功。TypeScript 7.0.2の型チェック成功。
+- 起動：ビルドした画面を `python src/app.py` で配信し、画面・/api/health・風景画像のHTTP 200を確認。架空データの一時DBでヘッドレスEdgeの1366px・390px表示を目視し、狭い画面のはみ出しと最新の返答が入力欄に隠れる問題を修正しました。
+- Docker：検証用タグでイメージのビルド成功（Node段で画面をビルド）。一時コンテナでhealthy、画面200、別Hostの403、別サイトOriginの削除要求403、キー未設定時の送信が安全な文言の502で保存なしを確認。利用者のComposeプロジェクト・ボリュームは使っていません。
+- 利用者の実機確認：React移行後の画面で音声入力ができたと報告を受けました（実ブラウザでの録音→WAV変換→文字起こし）。ブラウザ・起動方法・認識精度の詳細は記録していません。エージェントの直接確認ではありません。
+- 未確認：実Geminiでの対話、実モデルのトーン分析・文字起こしの再確認、PC・モバイルの実機操作、コントラスト測定。
+
+```powershell
+$env:PYTHONPATH = "$PWD/.test-deps"
+$env:PYTEST_DISABLE_PLUGIN_AUTOLOAD = '1'
+python -m pytest -q --basetemp=.test-temp-react-final4 -p no:cacheprovider --tb=line
+npm --prefix frontend test
+npm --prefix frontend run typecheck
+```
+
+代替API・代替録音での画面テスト成功を、実マイクの動作や対話品質の検証とは扱いません。
+
+### 音声入力の追加（2026-10-25）
+
+feature/voice-inputでFR-026 / AT-046を追加。Windows / Python 3.13.7 / Streamlit 1.66.1で、永続化・境界・状態遷移・通常入口のAppTestを含め全98件成功、スキップなし。録音・文字起こしだけではAPI呼出しや会話保存が起きず、編集して確認した文章だけが送信・保存されること、送信確認、送信成功後の再表示、下書きの破棄・録音変更・会話削除・失敗時保持を検証しました。
+
+```powershell
+$env:PYTHONPATH = "$PWD/.test-deps"
+$env:PYTEST_DISABLE_PLUGIN_AUTOLOAD = '1'
+python -m pytest -q --basetemp=.test-temp-voice-final -p no:cacheprovider --tb=short --show-capture=no
+```
+
+初回は巨大な音声バイト列がpytestのケース名に入り、一時ファイルの準備で失敗したため、短い識別名を指定して解消。破棄ボタンのテストも、クリック前に擬似録音を消してボタンが描画されなくなる操作を修正しました。録音の解除時に下書きを破棄する処理を追加し、全件を再実行して成功しています。代替文字起こし・代替応答器のテストは実モデルの認識精度や実マイク動作の検証ではありません。
 
 ### 文章トーン分析の追加（2026-10-25）
 
