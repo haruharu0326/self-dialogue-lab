@@ -19,6 +19,8 @@
 
 ## 要件・設計・実装・テストの対応
 
+開発用の[応答評価CLI](development/response-evaluation.md)は通常製品から独立します。EFR-001〜003 / ENFR-001 → `evaluation.py` / `scripts/evaluate.py` → EAT-001〜003 / `tests/test_evaluation.py` が対応します。実APIの対話品質は自動テスト成功とは別に評価します。
+
 開発環境の改善は[開発ハーネスの現状と導入案](development/harness-plan.md)を参照してください。製品機能とは分けて、現状の不足・規約との不整合・検証結果・導入順を記載しています。
 
 現行FR-018,019とAT-032,033の番号は維持しています。新規の番号を追加し、旧番号を別機能へ再利用しません。

@@ -36,4 +36,5 @@ secrets.toml
 *.webm
 node_modules/
 .review-runs/
+.eval-runs/
 src/self_dialogue_lab/static/

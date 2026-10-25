@@ -1,5 +1,7 @@
 # 内部設計書
 
+開発用の応答評価CLIは[専用仕様](../development/response-evaluation.md)を参照してください。本人用DB・通常UIから独立し、本番のGeminiResponderを再利用します。
+
 通常製品の実装を説明します。画面は[外部設計](external-design.md)、機能の受入条件は[機能要件](../requirements/functional-requirements.md)を正本とします。
 
 ## アーキテクチャ図（現行実装）

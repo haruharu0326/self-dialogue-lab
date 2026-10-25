@@ -67,6 +67,8 @@ Get-Content -Raw .\scripts\check_gemini.py | docker compose exec -T app python -
 
 ## 開発・検証
 
+応答評価は `python scripts/evaluate.py run --output .eval-runs/baseline.json`。既定はモック・固定応答で、`--live --repeat 3` を追加すると架空ケースをGeminiへ送信して反復します。環境変数のキーを使います。結果JSONには人の採点欄があり、`python scripts/evaluate.py compare .eval-runs/baseline.json .eval-runs/candidate.json` で比較できます。[仕様・採点手順](docs/development/response-evaluation.md)を参照してください。
+
 自動レビューはCodex CLIへログイン後、`python scripts/review.py`。検証を実行し、HEADから現在までの差分・規約・仕様・関連コードをモデル提供先へ送り、結果を`.review-runs/`へ保存します。`--paths scripts/review.py`のように対象を限定でき、`--prepare-only`なら送信せず入力だけ確認できます。終了コードと制限は[自動レビューの実行仕様](docs/development/harness-plan.md#自動レビュー実行器の仕様)を参照してください。
 
 一括検証は `python scripts/verify.py`。Python・画面テスト、型チェックを含むビルド、一時DBでの起動を確認します。失敗は終了コード1、失敗なしでスキップがある場合は2、完全成功は0です。スキップを許容する場合は `--allow-skips` を指定します。[実行仕様と制限](docs/development/harness-plan.md#一括検証の実行仕様)を参照してください。
