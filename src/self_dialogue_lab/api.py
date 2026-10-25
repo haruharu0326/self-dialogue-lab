@@ -9,7 +9,7 @@ import sqlite3
 
 from fastapi import FastAPI, Request
 from fastapi.concurrency import run_in_threadpool
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -21,7 +21,6 @@ from .voice import MAX_BYTES, VoiceError, transcribe as local_transcribe
 
 PACKAGE = Path(__file__).parent
 STATIC = PACKAGE / 'static'
-LANDSCAPE = PACKAGE / 'assets' / 'lake-dawn.png'
 ALLOWED_HOSTS = {'127.0.0.1', 'localhost'}
 STORAGE_ERROR = '保存データにアクセスできません。保存先と起動状態を確認して、もう一度開いてください。'
 FORMAT_ERROR = '保存データの形式を確認してください。'
@@ -196,10 +195,6 @@ def create_app(db_path=None, *, responder_factory=None, transcriber=None, analyz
             if len(data) > MAX_BYTES:
                 raise VoiceError('録音は60秒以内にして、もう一度録音してください。')
         return {'text': await run_in_threadpool(transcriber or local_transcribe, bytes(data))}
-
-    @app.get('/media/landscape.png', include_in_schema=False)
-    def landscape():
-        return FileResponse(LANDSCAPE, media_type='image/png')
 
     if (Path(static_dir) / 'index.html').is_file():
         app.mount('/', StaticFiles(directory=static_dir, html=True), name='screen')

@@ -40,7 +40,7 @@
 |NFR-006,009 エラー・ログ|共通通知|gemini.py / api.py / app.py（アクセスログ無効）|AT-039|
 |NFR-007,008 秘密・外部送信|送信範囲案内・分析結果の非送信|.gitignore / GeminiResponder / sentiment.py|AT-037,038,045|
 |NFR-010 削除の範囲|記憶と会話の別操作|records / 会話関連テーブル|AT-035,036|
-|NFR-011 分かりやすさ|SCR-004・自然背景・任意分析|frontend/src/styles.css / components / assets/lake-dawn.png|AT-032,043,045|
+|NFR-011 分かりやすさ|SCR-004・見た目の方針・任意分析|frontend/src/styles.css / components|AT-032,043,045|
 |NFR-012,013 分離・交換性|対象外|frontend / api / service / store / GeminiResponder|AT-032〜034,039|
 
 音声入力の非保存・送信確認・エラー・下書き状態の境界はNFR-006〜010,012とAT-046にも対応します。モデルや設定の詳細は[内部設計の音声入力](design/internal-design.md#音声入力)、手順は[プロジェクトREADME](../README.md#音声入力任意)を参照してください。

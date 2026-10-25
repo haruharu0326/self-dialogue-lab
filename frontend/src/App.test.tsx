@@ -90,7 +90,7 @@ describe('product screen', () => {
     expect(api.send).not.toHaveBeenCalled()
     await userEvent.click(screen.getByRole('button', { name: '送信' }))
     expect(api.send).toHaveBeenCalledWith('一行目\n二行目', true)
-    expect(await screen.findByText('Geminiの返答 · 推測を含みます')).toBeInTheDocument()
+    expect(await screen.findByText('Geminiの返答（推測を含みます）')).toBeInTheDocument()
     expect(messageBox()).toHaveValue('')
   })
 
@@ -109,6 +109,12 @@ describe('product screen', () => {
     expect(screen.getByText('覚えていること（1件）')).toBeInTheDocument()
     expect(screen.queryByText('この回答を覚えておく')).toBeNull()
     expect(screen.getByText(/保存した回答です/)).toBeInTheDocument()
+    expect(screen.getByText('覚えた')).toHaveClass('stamp', 'is-new')
+  })
+
+  it('does not press the stamp again for answers already remembered on load', async () => {
+    render(<App api={fakeApi(base({ exchanges: [exchange(1, '前に覚えた回答', 'approved')] }))} />)
+    expect(await screen.findByText('覚えた')).not.toHaveClass('is-new')
   })
 
   it('can decline remembering and shows server validation errors', async () => {

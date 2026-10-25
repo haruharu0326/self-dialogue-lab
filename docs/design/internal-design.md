@@ -112,7 +112,7 @@ flowchart LR
 |store.py|SQLite初期化・移行、記憶・候補の状態遷移、履歴・削除・データ取得|
 |gemini.py|Gemini REST通信、出力・参照ID検証、安全なエラー分類。UI/DBに依存しない|
 |responder.py|Replyと応答契約、検証用固定応答。通常画面は固定応答を呼ばない|
-|assets/|ローカルの風景PNG（画面の背景、/media/landscape.png）と検証用画面のCSS|
+|assets/|検証用画面（src/lab.py）の風景PNGとCSS。通常画面では使わない|
 |tests/test_api.py|現行製品のAPI境界（送信確認・承認・削除範囲・トーン・音声・ローカル限定）|
 |frontend/src/App.test.tsx|画面の操作と表示（Vitest + Testing Library、APIは代替）|
 |tests/test_simple_chat.py, test_gemini.py, test_integrity.py, test_persistence.py|業務処理・API・DBの共通境界と回帰テスト|

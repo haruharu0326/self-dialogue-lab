@@ -4,7 +4,7 @@
 
 Geminiと対話し、残したい自分の回答だけ「覚えておく」。覚えた回答を次の対話で参照します。「学習」はモデルの再訓練ではなく、この記憶の仕組みです。
 
-通常画面はチャット1画面です。シナリオ、分析、評価、細かな設定を並べません。自然の風景を画面全体に敷き、会話を半透明のパネルで読みます。
+通常画面はチャット1画面です。シナリオ、分析、評価、細かな設定を並べません。罫線ノートの1ページのように、自分の言葉を罫線の上に、問いを余白に書き分けます。
 
 画面はReact（`frontend/`）、会話・記憶の処理とDBはPythonのAPIサーバー（FastAPI）です。どちらも同じ http://127.0.0.1:8501 で動きます。
 
@@ -63,7 +63,7 @@ Get-Content -Raw .\scripts\check_gemini.py | docker compose exec -T app python -
 - DBは直接起動時 `data/personal.sqlite3`、Dockerでは `/app/data/personal.sqlite3`。環境変数 `SELF_DIALOGUE_PERSONAL_DB` で変更できます。
 - `.env`、DB、個人書き出し、モデルはGit対象外。APIキーをDBや画面へ保存しません。送信した情報のGoogle側での取扱いは利用条件に従います。
 - 推測を含む返答であり、本人の人格・意識の再現や正確な理解を保証しません。意味検索やモデル重みの学習はありません。
-- 風景はAI生成。[素材と生成条件](src/self_dialogue_lab/assets/provenance.json)を同梱し、画像・フォントを外部取得しません。
+- 通常画面は画像・フォントを外部取得しません（書体はOS同梱）。検証用画面の風景はAI生成で、[素材と生成条件](src/self_dialogue_lab/assets/provenance.json)を同梱しています。
 
 ## 開発・検証
 

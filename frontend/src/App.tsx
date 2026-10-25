@@ -78,7 +78,7 @@ export default function App({ api = defaultApi, recorder = browserRecorder }: Pr
     return (
       <div className="app app-loading">
         <main className="loading-card">
-          <p className="kicker">SELF DIALOGUE LAB</p>
+          <p className="wordmark">Self Dialogue Lab</p>
           {loadError ? (
             <>
               <p className="alert alert-error" role="alert">{loadError}</p>
@@ -122,7 +122,6 @@ export default function App({ api = defaultApi, recorder = browserRecorder }: Pr
           >
             記憶と設定
           </button>
-          <p className="kicker">SELF DIALOGUE LAB</p>
           <h1>話しながら、自分の考えを見つける。</h1>
           <p className="lede">答えを急がず、ひとつずつ。覚えておいてほしい回答だけ、残せます。</p>
         </header>
@@ -172,7 +171,7 @@ export default function App({ api = defaultApi, recorder = browserRecorder }: Pr
               送信
             </button>
           </form>
-          <p className="composer-hint">Enterで送信 · Shift+Enterで改行</p>
+          <p className="composer-hint">Enterで送信、Shift+Enterで改行</p>
         </footer>
         {/* Below the sticky dock, so scrolling here leaves the latest turn visible above it. */}
         <div ref={end} />

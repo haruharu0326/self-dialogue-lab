@@ -7,6 +7,6 @@ const api = 'http://127.0.0.1:8501'
 export default defineConfig({
   plugins: [react()],
   build: { outDir: '../src/self_dialogue_lab/static', emptyOutDir: true },
-  server: { host: '127.0.0.1', proxy: { '/api': api, '/media': api } },
+  server: { host: '127.0.0.1', proxy: { '/api': api } },
   test: { environment: 'jsdom', globals: true, setupFiles: ['./src/setupTests.ts'] },
 })
