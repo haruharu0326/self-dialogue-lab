@@ -10,10 +10,9 @@ Geminiと対話し、残したい自分の回答だけ「覚えておく」。�
 
 ## 起動
 
-Docker Desktopを起動し、次をPowerShellで実行します。
+Docker Desktopを起動し、リポジトリを保存した `self-dialogue-lab` フォルダーをPowerShellで開いて、次を実行します。
 
 ```powershell
-cd C:\Users\16326\projects\self-dialogue-lab
 if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 notepad .env
 ```
