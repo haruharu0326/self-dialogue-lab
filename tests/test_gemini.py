@@ -15,6 +15,24 @@ class Response(BytesIO):
     pass
 
 
+def test_tone_context_is_bounded_and_not_reused(db):
+    captured = []
+    def transport(req, timeout):
+        captured.append(json.loads(json.loads(req.data)['contents'][0]['parts'][0]['text']))
+        return Response(envelope())
+    client = GeminiResponder('test-key-only', transport=transport)
+    converse_gemini(db, client, '相談', consent=True, tone_context={'label': '中立', 'score': 0.5, 'extra': 'omit'})
+    assert captured[-1]['tone_context'] == {'label': '中立', 'score': 0.5,
+                                           'source': 'local_text_classifier', 'max_input_tokens': 512}
+    converse_gemini(db, client, '続き', consent=True)
+    assert 'tone_context' not in json.dumps(captured[-1])
+    for tone in ({'label': 'invalid', 'score': 0.5}, {'label': '中立', 'score': float('nan')},
+                 {'label': '中立', 'score': True}, {'label': '中立', 'score': 2}):
+        with pytest.raises(GeminiError):
+            converse_gemini(db, client, '相談', consent=True, tone_context=tone)
+    assert len(captured) == 2
+
+
 def envelope(ids=(), text='話を聞かせてください', question='いま何を大切にしたいですか？', finish='STOP'):
     content = json.dumps({'interpretation': text, 'question': question, 'reference_ids': list(ids)}, ensure_ascii=False)
     return json.dumps({'candidates': [{'finishReason': finish, 'content': {'parts': [{'text': content}]}}]}, ensure_ascii=False).encode()

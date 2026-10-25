@@ -34,13 +34,14 @@
 |FR-022 会話を消す|サイドバーの削除|Sidebar.tsx / api.py DELETE /api/conversations / Store.clear_conversations|AT-036|
 |FR-023 接続と送信確認|接続案内・確認チェック|App.tsx / Sidebar.tsx / api.py / compose.yaml|AT-037,038,040|
 |FR-024 エラー通知|エラー表示|GeminiError / api.pyの例外ハンドラー / api.ts / scripts/check_gemini.py|AT-037,039,044|
+|FR-027 トーンの任意送信|初期OFFチェック|App.tsx / api.ts / api.py / service.py / GeminiResponder|AT-047|
 |FR-025 文章トーン3分類|本人発言の任意操作|Conversation.tsx / api.py POST /api/exchanges/{id}/tone / sentiment.py / Dockerfile / compose.yaml|AT-045|
 |FR-026 音声入力|録音→文字起こし→確認編集→送信|VoiceInput.tsx / recorder.ts / api.py POST /api/voice/transcribe / voice.py / Dockerfile / compose.yaml|AT-046|
 |NFR-001,002 実行環境・ローカル|起動・設定|Dockerfile / compose.yaml / app.py / api.pyのHost・Origin確認|AT-040|
 |NFR-003 性能|通常操作|未測定|AT-041|
 |NFR-004,005 永続性・整合性|覚える・忘れる・削除|SQLite / Store.transaction|AT-033,035,036,042|
 |NFR-006,009 エラー・ログ|共通通知|gemini.py / api.py / app.py（アクセスログ無効）|AT-039|
-|NFR-007,008 秘密・外部送信|送信範囲案内・分析結果の非送信|.gitignore / GeminiResponder / sentiment.py|AT-037,038,045|
+|NFR-007,008 秘密・外部送信|送信範囲案内・分析結果の送信境界|.gitignore / GeminiResponder / sentiment.py|AT-037,038,045,047|
 |NFR-010 削除の範囲|記憶と会話の別操作|records / 会話関連テーブル|AT-035,036|
 |NFR-011 分かりやすさ|SCR-004・見た目の方針・任意分析|frontend/src/styles.css / components|AT-032,043,045|
 |NFR-012,013 分離・交換性|対象外|frontend / api / service / store / GeminiResponder|AT-032〜034,039|

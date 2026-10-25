@@ -26,7 +26,7 @@ def converse(store, responder: Responder, message, scenario, correction_of=None,
 
 
 def converse_gemini(store, responder, message, *, reference_ids=(), include_history=True,
-                    consent=False, demo=False, correction_of=None):
+                    consent=False, demo=False, correction_of=None, tone_context=None):
     if not consent:
         raise ValueError('Googleへ送信する情報を確認して、送信確認にチェックしてください。')
     if not message.strip():
@@ -41,16 +41,17 @@ def converse_gemini(store, responder, message, *, reference_ids=(), include_hist
             raise ValueError('訂正する応答が見つかりません')
         body = json.loads(rows[0]['body'])
         target = {'interpretation': body['interpretation'], 'question': body['question']}
+    options = {'tone_context': tone_context} if tone_context is not None else {}
     reply = responder.respond(message, 'Geminiチャット', [current[id] for id in dict.fromkeys(reference_ids)],
-                              correction_of=target, history=store.gemini_history() if include_history else [], demo=demo)
+                              correction_of=target, history=store.gemini_history() if include_history else [], demo=demo, **options)
     _save_exchange(store, reply, message, correction_of, provider='gemini', model=responder.model)
 
 
-def converse_personal(store, responder, message, *, consent=False):
+def converse_personal(store, responder, message, *, consent=False, tone_context=None):
     """Use only explicitly remembered, current answers as long-term context."""
     return converse_gemini(store, responder, message,
                           reference_ids=[record['id'] for record in store.current_records()],
-                          include_history=True, consent=consent, demo=False)
+                          include_history=True, consent=consent, demo=False, tone_context=tone_context)
 
 
 def _save_exchange(store, reply, message, correction_of=None, previous_id=None, reason='', context='', provider='mock', model=None):

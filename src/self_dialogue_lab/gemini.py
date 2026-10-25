@@ -24,6 +24,16 @@ demoがtrueなら記録は架空の試用データで、実際のユーザー情
 correction_ofがあればその解釈を再検討し、訂正内容を確認してください。
 JSONオブジェクトでinterpretation（返答と推測の区別、理由）、question（次の問い）、reference_ids（整数配列）を返してください。'''
 
+SYSTEM += '''
+今回のmessageに直接答え、必要な場合だけ過去の記録を結び付けてください。
+要点を具体的に示し、抽象的な共感の繰り返しを避け、次の問いは原則一つに絞ってください。
+tone_contextは今回の文章の先頭512トークン以内から分類器が出した不確実な推定です。
+scoreは感情の強さや正しさの保証ではありません。音声の声色の分析でもありません。
+本人の明示的な発言・訂正と文脈を優先し、矛盾する推定は採用しないでください。
+ネガティブな分類だけで危機・病気・人格を推定せず、性急な助言や反論を控えた穏やかな応答の補助に限って使ってください。
+分類を本人の感情や現在の信念として引用・断定せず、必要なら本人に確認してください。
+'''
+
 SCHEMA = {
     'type': 'OBJECT',
     'properties': {
@@ -54,7 +64,7 @@ class GeminiResponder:
         self.model = model or os.environ.get('GEMINI_MODEL') or DEFAULT_MODEL
         self._transport = transport or build_opener(_NoRedirect()).open
 
-    def respond(self, message, scenario, records, correction_of=None, change_from=None, history=None, demo=False):
+    def respond(self, message, scenario, records, correction_of=None, change_from=None, history=None, demo=False, tone_context=None):
         if not self._key.strip() or '\n' in self._key or '\r' in self._key:
             raise GeminiError('GEMINI_API_KEYをローカルで設定してから再起動してください。')
         if not re.fullmatch(r'gemini-[a-zA-Z0-9._-]+', self.model):
@@ -68,6 +78,14 @@ class GeminiResponder:
         supplied = {r['id']: r for r in records if not r.get('superseded', 0)}
         data = {'message': message, 'records': list(supplied.values()), 'history': history or [],
                 'correction_of': correction_of, 'demo': demo}
+        if tone_context is not None:
+            from .sentiment import LABELS
+            if (tone_context.get('label') not in LABELS.values()
+                    or type(tone_context.get('score')) not in (float, int)
+                    or not math.isfinite(tone_context['score']) or not 0 <= tone_context['score'] <= 1):
+                raise GeminiError('文章のトーン分析結果を確認できません。トーン送信を解除して再試行してください。')
+            data['tone_context'] = {'label': tone_context['label'], 'score': tone_context['score'],
+                                    'source': 'local_text_classifier', 'max_input_tokens': 512}
         payload = {
             'systemInstruction': {'parts': [{'text': SYSTEM}]},
             'contents': [{'role': 'user', 'parts': [{'text': json.dumps(data, ensure_ascii=False)}]}],

@@ -190,3 +190,13 @@ python -m pytest -q --basetemp=.test-temp-doc-current --tb=short -rs
 ユーザーの初回API診断はPOSTのTimeoutError。診断を「15秒のモデル情報GET」と、明示指定時だけの生成POSTへ分離し、アプリの待ち時間を120秒既定で設定可能にしました。関連テスト27成功・画面1スキップ。ユーザーの追加診断はモデルGETがHTTP 200で成功し、その後に返答と記憶参照の成功報告を得ています。初回タイムアウトの原因を生成遅延と断定したものではありません。
 
 修正後の全体回帰：`python -m pytest -q --basetemp=.test-temp-timeout-final --tb=short -rs`で67成功、8スキップ（3.23秒）。スキップは引き続き開発環境のStreamlit不足による画面テストです。実APIの解消確認とは区別します。
+
+## AT-047 トーンの任意送信
+
+FR-027 / NFR-007,008。初期OFF・未設定では分析しない。選択時だけ今回の実際の送信文を分類し、分類・スコア・入力範囲をGeminiへ渡す。未同意では分析・通信せず、未設定・推論失敗では送信・保存しない。DB・長期記憶・次回履歴に結果が混ざらない。送信確認のやり直しでOFFに戻る。
+
+対応テスト：tests/test_api.py、tests/test_gemini.py、frontend/src/App.test.tsx。実モデルの分類精度、実Geminiの応答品質比較、実マイクは未確認。代替通信・固定応答の検証を対話品質の評価としない。
+
+2026-10-25 main反映前の再検証：`python scripts/verify.py`でPython 141成功・7スキップ（Streamlit未導入）、画面17成功、型チェックを含むビルド成功。一時DBでhealth・空の初期状態・ReactページのHTTP 200を確認。スキップがあるため検証器の終了コードは2。アーキテクチャのMermaid 3図をChromeで描画し、生成画像で配置を確認。`git diff --check`も成功。実API・Docker・実モデルの動作確認は含めない。
+
+2026-10-25実施：`python -m pytest -q --basetemp=.test-temp` は131成功・7スキップ（任意依存Streamlit未導入の検証）。`npm.cmd --prefix frontend test` は17成功。初回は未設定案内の重複で1件失敗し、対象の文言を明示した後に全件成功。`npm.cmd --prefix frontend run build` 成功。PowerShellのnpm.ps1が実行ポリシーで拒否されるためnpm.cmdを使用。一時DB・ポート8517で実サーバーを起動し、/api/healthとビルド済みReactページのHTTP 200を確認後に停止。実Google APIへの送信は未実施。

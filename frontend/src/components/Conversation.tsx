@@ -117,7 +117,7 @@ function Tone({ exchangeId, configured, tone }: { exchangeId: number; configured
       <summary>文章のトーン（任意）</summary>
       <div className="fold-body">
         <p className="note">本人の気持ちの断定ではなく、文章からの推定です。中立は「感情がない」という意味ではありません。</p>
-        <p className="note">分析はPC内で実行し、結果を記憶やGeminiへ渡しません。結果はこの表示だけで、再読み込みや会話の削除で消えます。</p>
+        <p className="note">このボタンの分析結果は記憶やGeminiへ渡しません。結果はこの表示だけで、再読み込みや会話の削除で消えます。送信欄でトーン送信を選んだ場合は、送信時に別途分析します。</p>
         {!configured && <p className="note">分析モデルは未設定です。READMEの「文章のトーン分析」の手順で有効化できます。</p>}
         <button type="button" className="button button-quiet" disabled={!configured || running} onClick={analyze}>
           {running ? 'この発言をPC内で分析しています…' : '文章のトーンを分析'}

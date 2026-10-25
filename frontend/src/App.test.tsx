@@ -169,12 +169,26 @@ describe('product screen', () => {
 })
 
 describe('tone analysis', () => {
+  it('sends tone only when selected and resets the selection with consent', async () => {
+    const api = fakeApi(base({ toneConfigured: true }))
+    render(<App api={api} />)
+    const toggle = await screen.findByRole('checkbox', { name: '送信する文章のトーンもGeminiへ渡す' })
+    expect(toggle).not.toBeChecked()
+    await consent()
+    await userEvent.click(toggle)
+    await userEvent.type(messageBox(), 'いまの相談{Enter}')
+    await waitFor(() => expect(api.send).toHaveBeenCalledWith('いまの相談', true, true))
+    await userEvent.click(screen.getByRole('button', { name: '送信の確認をやり直す' }))
+    expect(toggle).not.toBeChecked()
+    expect(api.tone).not.toHaveBeenCalled()
+  })
+
   it('is disabled until configured and never runs automatically', async () => {
     const api = fakeApi(base({ exchanges: [exchange(1, '発言')] }))
     render(<App api={api} />)
     await userEvent.click(await screen.findByText('文章のトーン（任意）'))
     expect(screen.getByRole('button', { name: '文章のトーンを分析' })).toBeDisabled()
-    expect(screen.getByText(/分析モデルは未設定です/)).toBeInTheDocument()
+    expect(screen.getByText('分析モデルは未設定です。READMEの「文章のトーン分析」の手順で有効化できます。')).toBeInTheDocument()
     expect(api.tone).not.toHaveBeenCalled()
   })
 

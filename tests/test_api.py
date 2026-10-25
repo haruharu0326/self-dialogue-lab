@@ -58,6 +58,29 @@ def snapshot(path):
         db.db.close()
 
 
+def test_optional_tone_send_consent_failure_and_no_persistence(env, monkeypatch):
+    client, path, calls = env
+    payload = {'text': '今回の文章', 'consent': False, 'include_tone': True}
+    assert client.post('/api/messages', json=payload).status_code == 400
+    assert calls['tone'] == [] and Responder.sent == []
+    payload['consent'] = True
+    assert client.post('/api/messages', json=payload).status_code == 422
+    assert Responder.sent == []
+    monkeypatch.setenv('SENTIMENT_MODEL_PATH', 'model')
+    assert client.post('/api/messages', json=payload).status_code == 200
+    assert calls['tone'] == ['今回の文章']
+    assert Responder.sent[-1]['tone_context'] == {'label': '中立', 'score': 0.5}
+    assert 'tone_context' not in json.dumps(snapshot(path))
+    payload['include_tone'] = False
+    assert client.post('/api/messages', json=payload).status_code == 200
+    assert 'tone_context' not in Responder.sent[-1]
+    assert len(calls['tone']) == 1
+    before = snapshot(path)
+    payload.update(text='失敗する発言', include_tone=True)
+    assert client.post('/api/messages', json=payload).status_code == 422
+    assert snapshot(path) == before and len(Responder.sent) == 2
+
+
 def send(client, text, consent=True):
     return client.post('/api/messages', json={'text': text, 'consent': consent})
 

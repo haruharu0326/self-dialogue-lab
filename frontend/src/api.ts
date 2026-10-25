@@ -28,7 +28,7 @@ async function call<T>(method: string, path: string, body?: unknown): Promise<T>
 
 export const api = {
   state: () => call<AppState>('GET', '/api/state'),
-  send: (text: string, consent: boolean) => call<AppState>('POST', '/api/messages', { text, consent }),
+  send: (text: string, consent: boolean, includeTone = false) => call<AppState>('POST', '/api/messages', { text, consent, include_tone: includeTone }),
   approve: (id: number, thought: string) => call<AppState>('POST', `/api/candidates/${id}/approve`, { thought }),
   reject: (id: number) => call<AppState>('POST', `/api/candidates/${id}/reject`),
   forget: (id: number) => call<AppState>('DELETE', `/api/memories/${id}`),

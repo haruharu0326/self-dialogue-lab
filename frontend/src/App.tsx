@@ -13,6 +13,7 @@ export default function App({ api = defaultApi, recorder = browserRecorder }: Pr
   const [loadError, setLoadError] = useState<string | null>(null)
   // Consent lives only in this page's memory, like the former Streamlit session.
   const [consent, setConsent] = useState(false)
+  const [includeTone, setIncludeTone] = useState(false)
   const [busy, setBusy] = useState(false)
   const [pending, setPending] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
@@ -57,7 +58,7 @@ export default function App({ api = defaultApi, recorder = browserRecorder }: Pr
 
   const send = (message: string) => {
     setPending(message)
-    return run(() => api.send(message, consent))
+    return run(() => includeTone ? api.send(message, consent, true) : api.send(message, consent))
   }
 
   const submit = async (event?: FormEvent) => {
@@ -102,7 +103,7 @@ export default function App({ api = defaultApi, recorder = browserRecorder }: Pr
           configured={state.configured}
           memories={state.memories}
           busy={busy}
-          onResetConsent={() => setConsent(false)}
+          onResetConsent={() => { setConsent(false); setIncludeTone(false) }}
           onForget={(id) => run(() => api.forget(id), 'この内容を記憶から外しました。')}
           onClear={async () => {
             if (await run(api.clear, '会話履歴を削除しました。覚えた回答は残っています。')) setEpoch((value) => value + 1)
@@ -154,6 +155,11 @@ export default function App({ api = defaultApi, recorder = browserRecorder }: Pr
             {error && <p className="alert alert-error" role="alert">{error}</p>}
           </div>
           <VoiceInput key={epoch} configured={state.voiceConfigured} enabled={canSend} recorder={recorder} transcribe={api.transcribe} onSend={send} />
+          <label className="consent">
+            <input type="checkbox" checked={includeTone} disabled={!state.toneConfigured || busy} onChange={(event) => setIncludeTone(event.target.checked)} />
+            <span>送信する文章のトーンもGeminiへ渡す</span>
+          </label>
+          <p className="note">選択時は送信する文章をPC内で分析し、推定分類とスコアをGoogleへ送ります。本人の気持ちや声色の断定ではありません。分析結果自体は保存しませんが、返答に反映された表現は会話に残ります。{!state.toneConfigured && '分析モデルは未設定です。'}</p>
           <form className="composer" onSubmit={submit}>
             <label className="visually-hidden" htmlFor="message">
               メッセージ

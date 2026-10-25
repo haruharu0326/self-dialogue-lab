@@ -33,6 +33,7 @@ class StorageFormatError(RuntimeError):
 class Message(BaseModel):
     text: str
     consent: bool = False
+    include_tone: bool = False
 
 
 class Approval(BaseModel):
@@ -139,9 +140,18 @@ def create_app(db_path=None, *, responder_factory=None, transcriber=None, analyz
 
     @app.post('/api/messages')
     def send(message: Message):
+        if not message.consent:
+            raise ValueError('Googleへ送信する情報を確認して、送信確認にチェックしてください。')
+        if not message.text.strip():
+            raise ValueError('メッセージを入力してください')
+        tone_context = None
+        if message.include_tone:
+            if not _configured('SENTIMENT_MODEL_PATH'):
+                raise SentimentError('分析モデルは未設定です。トーン送信を解除するか、モデルを設定してください。')
+            tone_context = (analyzer or analyze)(message.text)
         with opened() as store:
             responder = (responder_factory or GeminiResponder)()
-            converse_personal(store, responder, message.text, consent=message.consent)
+            converse_personal(store, responder, message.text, consent=message.consent, tone_context=tone_context)
             return _state(store)
 
     @app.post('/api/candidates/{id}/approve')
