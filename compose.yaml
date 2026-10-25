@@ -1,0 +1,25 @@
+name: self-dialogue-lab
+
+services:
+  app:
+    build:
+      context: .
+      args:
+        INSTALL_SENTIMENT: ${INSTALL_SENTIMENT:-false}
+    environment:
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.8-flash}
+      GEMINI_TIMEOUT_SECONDS: ${GEMINI_TIMEOUT_SECONDS:-120}
+      SENTIMENT_MODEL_PATH: ${SENTIMENT_MODEL_PATH:-}
+    ports:
+      - "127.0.0.1:8501:8501"
+    volumes:
+      - app-data:/app/data
+      - sentiment-models:/app/models
+    init: true
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  app-data:
+  sentiment-models:

@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "self-dialogue-lab"
+version = "0.2.0"
+description = "Local self-dialogue app with mock and optional Gemini chat"
+requires-python = ">=3.11"
+dependencies = ["streamlit>=1.40,<2"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<10"]
+sentiment = ["transformers>=4.45,<5", "torch>=2.4,<3", "safetensors>=0.4,<1"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+self_dialogue_lab = ["samples/*.json", "assets/*.png", "assets/*.css", "assets/*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+python_files = ["test_*.py"]

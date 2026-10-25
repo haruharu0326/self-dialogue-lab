@@ -1,0 +1,20 @@
+# Only build inputs are allowed in the image context.
+**
+!Dockerfile
+!pyproject.toml
+!src/
+!src/**
+!.streamlit/
+!.streamlit/config.toml
+
+**/__pycache__
+**/*.py[cod]
+**/*.sqlite*
+**/*.db
+**/*.db-*
+**/.env
+**/.env.*
+**/secrets.toml
+**/*.pem
+**/*.key
+**/*.log
