@@ -35,4 +35,5 @@ secrets.toml
 *.ogg
 *.webm
 node_modules/
+.review-runs/
 src/self_dialogue_lab/static/
