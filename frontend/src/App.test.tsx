@@ -408,6 +408,7 @@ describe('send mutual exclusion (typed and voice)', () => {
     const button = voiceSend()
     act(() => { button.click(); button.click() })
     expect(api.send).toHaveBeenCalledTimes(2)
+    await act(async () => {}) // flush microtasks so a wrongly released lock would show
     // The rejected second click must not release the first send's UI lock.
     expect(screen.getByRole('button', { name: '録音と下書きを破棄' })).toBeDisabled()
     expect(screen.queryByText('処理中です。完了するまで送信できません。')).toBeNull()

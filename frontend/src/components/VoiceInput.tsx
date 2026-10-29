@@ -81,9 +81,13 @@ export function VoiceInput({ configured, enabled, busy, recorder, transcribe, on
     if (sendingRef.current) return
     sendingRef.current = true
     setWorking('send')
-    const sent = await onSend(draft.trim())
-    sendingRef.current = false
-    setWorking(null)
+    let sent = false
+    try {
+      sent = await onSend(draft.trim())
+    } finally {
+      sendingRef.current = false
+      setWorking(null)
+    }
     // A failed send keeps the draft so nothing typed is lost; success is reset by the parent.
     if (sent) reset()
   }
