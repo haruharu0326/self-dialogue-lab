@@ -236,7 +236,7 @@ JSONでinterpretation（非空、最大20000文字）、question（文字列、�
 
 2026-10-29の方針に基づく設計初稿で、コードには未反映です。要件は[FR-028](../requirements/functional-requirements.md#fr-028-応答モードを選ぶ未実装)を正本とします。現行の通常画面は固定応答を呼びません（上記の責務表）。
 
-- 方針：Responder契約（引き継ぎのA2）を前提に、通常経路で固定応答の応答器とGeminiResponderを交換できるようにする。既定は固定応答、Geminiは本人の明示操作で有効化する。失敗時にもう一方へ自動で切り替えない。
+- 方針：Responder契約（[引き継ぎ表](../development/harness-plan.md#次回対応への引き継ぎ2026-10-25-mainレビュー)のA2、ブランチ`refactor/responder-contract`で対応中）を前提に、通常経路で固定応答の応答器とGeminiResponderを交換できるようにする。既定は固定応答、Geminiは本人の明示操作で有効化する。失敗時にもう一方へ自動で切り替えない。
 - 固定応答は入力を理解せず、検証用のMockResponderと同一とは限らない。通常用の固定応答の返答内容・表示区別・モードの保持範囲は実装ブランチ（想定`feature/responder-mode`）で確定する。
 - 送信確認（FR-023）はGeminiモードでのみ必要。固定応答モードでは外部送信しない。
 - 将来のFFR実装では、会話削除に派生物の削除を加え、同じトランザクションで一括削除する（[NFR-005](../requirements/non-functional-requirements.md#nfr-005-更新の整合性)・[方針決定2](../requirements/thinking-and-writing.md#2-会話削除は派生物も削除する)）。テーブル・API・外部送信確認の方式は各ブランチで設計する。

@@ -1,7 +1,7 @@
 # 開発方針
 
 - Python（FastAPI）/ React（Vite・TypeScript）/ SQLite / pytest・Vitest による1人用ローカルアプリを維持する。検証用のsrc/lab.pyだけStreamlitを任意依存で残す。
-- 応答器は、既定を固定応答（モック）とし、Geminiは本人が明示的に有効化したときだけ使う二重モードとする（docs/requirements/functional-requirements.mdのFR-028、実装は今後）。固定応答は自由入力を理解したと装わず、全画面で「モック・固定応答」を明示する。Gemini有効時は「Geminiの返答（推測を含みます）」を表示する。失敗時に自動でモードを切り替えない。
+- 応答器は既定を固定応答、Geminiは本人が明示的に有効化したときだけ使う二重モードとする。表示・切替の詳細はdocs/requirements/functional-requirements.mdのFR-028（実装は今後）を参照。固定応答は自由入力を理解したと装わない。
 - 架空サンプルとユーザーの実情報を混ぜない。サンプルは専用DBへ一度だけ投入する。
 - 画面、データ操作、応答器を分離し、将来の応答器はResponderを実装して交換する。
 - 未承認・拒否候補を長期記録や参照対象に含めない。承認は原子的で二重処理不可にする。
