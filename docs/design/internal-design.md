@@ -128,7 +128,7 @@ flowchart LR
 |service.py|入力・送信確認、現在の記憶選択、会話文脈、応答呼出し、一括保存|
 |store.py|SQLite初期化・移行、記憶・候補の状態遷移、履歴・削除・データ取得|
 |gemini.py|Gemini REST通信、出力・参照ID検証、安全なエラー分類。UI/DBに依存しない|
-|responder.py|Replyと応答契約、検証用固定応答。通常画面は固定応答を呼ばない|
+|responder.py|Replyと応答器の契約（[応答器の契約](#応答器の契約)）、検証用固定応答。通常画面は固定応答を呼ばない|
 |assets/|検証用画面（src/lab.py）の風景PNGとCSS。通常画面では使わない|
 |tests/test_api.py|現行製品のAPI境界（送信確認・承認・削除範囲・トーン・音声・ローカル限定）|
 |frontend/src/App.test.tsx|画面の操作と表示（Vitest + Testing Library、APIは代替）|
@@ -219,6 +219,26 @@ current_records()はsuperseded=0の行を日時・ID降順で返します。通�
 拒否：pending条件のUPDATEが1件でなければエラー。拒否に思考内容の検証は不要。会話の発言・返答・候補も一括トランザクションで保存し、API失敗時は保存処理へ進みません。
 
 会話削除：feedback → candidates → responses → messagesの順で一括削除し、records/metaは残します。記憶削除：対象recordsだけ削除し、派生行のprevious_idはSET NULL。候補のprevious_idは残り、変更元がない候補の承認は拒否します。
+
+## 応答器の契約
+
+（初稿・実装前の案）通常経路（converse_gemini / converse_personal）へ注入する応答器が満たす契約です。GeminiResponderと検証用MockResponderはこの契約に従い、テスト用の代替応答器も同じ契約で差し替えます。どの応答器を通常画面の既定にするかは本節では決めません（現状どおりGeminiResponder。方針の衝突は[引き継ぎ表](../development/harness-plan.md)の順序1で未決）。
+
+|項目|契約|
+|---|---|
+|属性 provider: str|生成元の識別子。GeminiResponderは`gemini`、MockResponderは`mock`。serviceはこの値をresponses.body.providerへ保存する|
+|属性 model: str|モデル・版の識別子。responses.body.modelへ保存する|
+|respond|`respond(message, scenario, records, *, correction_of=None, change_from=None, history=None, demo=False, tone_context=None) -> Reply`|
+|records|serviceが選んだ現在の記憶（current_records由来）だけ。未承認・拒否候補、過去扱い・削除済みの記録は渡さない|
+|history|会話文脈。serviceは常に渡す（文脈なしでは空配列）|
+|demo|架空データかどうか。通常経路は常にFalseを渡す|
+|tone_context|任意機能。serviceはNoneのとき引数自体を渡さない（現状維持）。応答器は受け取れる必要があるが、使わなくてよい|
+|change_from|検証用converseの変化処理だけが使う。通常経路では渡さない|
+|戻り値 Reply.references|今回渡したrecordsのうち実際に使った記録。serviceは保存前に、各参照のIDが今回渡したIDに含まれるかを応答器と独立に検証し、範囲外のIDを含む返答は保存せず拒否する。保存する写しは応答器の返した辞書ではなくDBから取得した記録で置き換える|
+
+範囲外の参照を含む返答は、APIの送信失敗と同じく安全な固定文言で通知し、発言・返答・候補を保存せず（一括ロールバック）、自動再試行や固定応答への切替をしません（NFR-012、AT-039）。
+
+代替応答器を使ったテストの成功は、契約と保存・参照境界の確認であり、実モデルの理解力や対話品質の評価ではありません。
 
 ## Geminiの内部契約
 
