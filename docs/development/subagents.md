@@ -11,6 +11,7 @@
 |`fe-engineer`|frontend/srcのReact実装とVitest|可|sonnet|
 |`reviewer`|差分の正しさとAGENTS.mdの設計境界のレビュー|不可|opus|
 |`tester`|テストが完了条件・ATを証明しているかの確認と関係テストの実行（テストは書かない）|不可|opus|
+|`refactorer`|指定範囲の振る舞いを変えない整理。変更前後でテスト結果を比べる。候補の列挙のみも可|可|opus|
 |`doc-keeper`|対応表・要件・設計・受入テスト・READMEへの波及確認。指示があればdocs配下とREADME.mdのみ更新|文書のみ|sonnet|
 
 「編集不可」は`tools:`でEdit・Writeを外して強制しています。reviewerとtesterはgit・テスト実行のためにBashを持つため、Bashでの書込み禁止は指示による制約です。doc-keeperの編集範囲も指示による制約です。秘密・個人データの保護は後述のhookで全員に強制しています。
@@ -25,6 +26,8 @@
 6. メインが`python scripts/verify.py`で一括検証と起動確認を行い、`doc-keeper`で対応表と関連文書を更新する。
 
 小さな変更では全工程を通さず、必要な担当だけを呼びます。
+
+リファクタリングは機能変更と分けて行います。メインが対象を指定して`refactorer`を呼び、終了後に`reviewer`で振る舞いが変わっていないかを確認します。`refactorer`はテストのassertを変えず、契約や仕様の変更が必要なものは自分で直さずに報告します。報告された案件は上記1の計画から扱います。差分だけを対象にした整理には、Claude Code組み込みの`/simplify`も使えます。
 
 ## 運用上の注意
 
@@ -52,4 +55,5 @@
 planner で「音声入力と手入力の送信を排他制御する」の計画を立てて
 reviewer に今の差分をレビューさせて
 tester で今回の変更がAT-046を満たしているか確認して
+refactorer で store.py の改善候補だけ挙げて
 ```
