@@ -6,19 +6,13 @@
 <title>開発チャット</title>
 <style>
 :root {
-  --side: #2e2440; --side-ink: #d9d2e6; --side-muted: #a397b8; --side-hover: #3c3052; --side-active: #5a4a85;
-  --bg: #ffffff; --ink: #1f1d24; --muted: #6d6878; --line: #e7e4ec; --hover: #f7f5fa;
-  --chip: #f1eef6; --link: #4b5fc4; --mention-bg: #fff3d6; --mention-ink: #8a5a00;
-  --work: #e8833a; --done: #2f9d62; --wait: #8a8496; --stale: #c0504d; --online: #2fbf71;
-  --code-bg: #f4f2f7; --system: #8f8a99;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --side: #19151f; --side-ink: #d6d0df; --side-muted: #8e869c; --side-hover: #262030; --side-active: #43386a;
-    --bg: #1d1b22; --ink: #e8e5ee; --muted: #a49eb0; --line: #2f2c37; --hover: #24212b;
-    --chip: #2b2833; --link: #9aa8ff; --mention-bg: #3d3214; --mention-ink: #f0c66b;
-    --code-bg: #26232e; --system: #8a8495;
-  }
+  color-scheme: dark;
+  --side: #19171d; --side-ink: #d1d2d3; --side-muted: #a9a7b0; --side-hover: #27242d; --side-active: #1164a3; --side-line: #34313b;
+  --bg: #1a1d21; --ink: #d1d2d3; --muted: #ababad; --line: #373a3f; --hover: #222529;
+  --chip: #2c2f34; --link: #4aaee6; --mention-bg: #3a3118; --mention-ink: #f2c75c;
+  --work: #b45309; --done: #1f7a4d; --wait: #6b6577; --stale: #b93c3c; --online: #2bac76;
+  --code-bg: #242830; --system: #a09ea6;
+  --on-accent: #ffffff; --avatar-main: #3d56b2; --avatar-s: 45%; --avatar-l: 30%;
 }
 * { box-sizing: border-box; }
 html, body { height: 100%; }
@@ -28,7 +22,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 
 /* サイドバー */
 .side { background: var(--side); color: var(--side-ink); display: flex; flex-direction: column; min-height: 0; }
-.ws { padding: 16px 16px 12px; border-bottom: 1px solid rgba(255, 255, 255, .08); }
+.ws { padding: 16px 16px 12px; border-bottom: 1px solid var(--side-line); }
 .ws b { display: block; font-size: 16px; }
 .ws small { color: var(--side-muted); font-size: 12px; }
 .conn { display: inline-flex; align-items: center; gap: 5px; margin-top: 6px; font-size: 12px; color: var(--side-muted); }
@@ -38,12 +32,12 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .side h3 { margin: 14px 10px 6px; font-size: 12.5px; font-weight: 600; color: var(--side-muted); }
 .item { display: flex; align-items: center; gap: 8px; width: 100%; padding: 5px 10px; border-radius: 6px; text-align: left; color: var(--side-ink); }
 .item:hover { background: var(--side-hover); }
-.item.active { background: var(--side-active); color: #fff; }
+.item.active { background: var(--side-active); color: var(--on-accent); }
 .item .hash { width: 16px; text-align: center; color: var(--side-muted); }
-.item.active .hash { color: #fff; }
+.item.active .hash { color: var(--on-accent); }
 .item .sub { margin-left: auto; font-size: 11px; color: var(--side-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90px; }
-.item .badge { margin-left: auto; font-size: 11px; font-weight: 700; padding: 0 6px; border-radius: 9px; background: var(--work); color: #fff; }
-.presence { position: relative; width: 20px; height: 20px; border-radius: 5px; flex: none; display: grid; place-items: center; font-size: 9.5px; font-weight: 800; color: #fff; }
+.item .badge { margin-left: auto; font-size: 11px; font-weight: 700; padding: 0 6px; border-radius: 9px; background: var(--work); color: var(--on-accent); }
+.presence { position: relative; width: 20px; height: 20px; border-radius: 5px; flex: none; display: grid; place-items: center; font-size: 9.5px; font-weight: 800; color: var(--on-accent); }
 .presence::after { content: ""; position: absolute; right: -3px; bottom: -3px; width: 9px; height: 9px; border-radius: 50%; border: 2px solid var(--side); background: var(--side-muted); }
 .presence.on::after { background: var(--online); }
 
@@ -56,7 +50,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .list { flex: 1; overflow: auto; padding: 12px 0 8px; }
 .msg { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 10px; padding: 6px 20px; }
 .msg:hover { background: var(--hover); }
-.avatar { width: 36px; height: 36px; border-radius: 8px; display: grid; place-items: center; font-weight: 800; font-size: 13px; color: #fff; }
+.avatar { width: 36px; height: 36px; border-radius: 8px; display: grid; place-items: center; font-weight: 800; font-size: 13px; color: var(--on-accent); }
 .who { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 .who b { font-size: 14.5px; }
 .who .role { font-size: 11px; padding: 0 6px; border-radius: 4px; background: var(--chip); color: var(--muted); }
@@ -73,7 +67,7 @@ pre { background: var(--code-bg); padding: 10px 12px; border-radius: 8px; overfl
 .thread-chip .mini { width: 22px; height: 22px; border-radius: 5px; font-size: 9px; }
 .thread-chip .count { color: var(--link); font-weight: 700; }
 .thread-chip .last { color: var(--muted); }
-.status { font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 99px; color: #fff; background: var(--wait); }
+.status { font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 99px; color: var(--on-accent); background: var(--wait); }
 .status.running { background: var(--work); } .status.done { background: var(--done); } .status.stale { background: var(--stale); }
 .system { text-align: center; color: var(--system); font-size: 12.5px; padding: 8px 20px; }
 .system::before, .system::after { content: " — "; opacity: .5; }
@@ -155,7 +149,7 @@ let chat = null;
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const hue = name => [...name].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 11);
 const initials = name => name === 'main' ? 'L' : name.split('-').map(p => p[0]).join('').slice(0, 2).toUpperCase();
-const color = name => name === 'main' ? '#4b5fc4' : `hsl(${hue(name)} 50% 46%)`;
+const color = name => name === 'main' ? 'var(--avatar-main)' : `hsl(${hue(name)} var(--avatar-s) var(--avatar-l))`;
 const avatar = (name, cls = 'avatar') => `<div class="${cls}" style="background:${color(name)}">${initials(name)}</div>`;
 const time = ts => new Date(ts * 1000).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
 const memberOf = name => chat.members.find(m => m.name === name) || { name, label: name };
