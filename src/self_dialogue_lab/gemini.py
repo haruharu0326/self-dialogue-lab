@@ -59,12 +59,14 @@ class _NoRedirect(HTTPRedirectHandler):
 
 
 class GeminiResponder:
+    provider = 'gemini'
+
     def __init__(self, api_key=None, model=None, transport=None):
         self._key = api_key if api_key is not None else os.environ.get('GEMINI_API_KEY', '')
         self.model = model or os.environ.get('GEMINI_MODEL') or DEFAULT_MODEL
         self._transport = transport or build_opener(_NoRedirect()).open
 
-    def respond(self, message, scenario, records, correction_of=None, change_from=None, history=None, demo=False, tone_context=None):
+    def respond(self, message, scenario, records, *, correction_of=None, change_from=None, history=None, demo=False, tone_context=None):
         if not self._key.strip() or '\n' in self._key or '\r' in self._key:
             raise GeminiError('GEMINI_API_KEYをローカルで設定してから再起動してください。')
         if not re.fullmatch(r'gemini-[a-zA-Z0-9._-]+', self.model):

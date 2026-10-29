@@ -9,12 +9,26 @@ class Reply:
     references: list[dict]
 
 
+class ResponderError(RuntimeError):
+    """Only safe, user-facing messages; the exchange is not saved."""
+
+
 class Responder(Protocol):
-    def respond(self, message: str, scenario: str, records: list[dict], correction_of: dict | None = None, change_from: dict | None = None) -> Reply: ...
+    """通常経路へ注入する応答器の契約。詳細はdocs/design/internal-design.mdの「応答器の契約」。"""
+    provider: str
+    model: str
+
+    def respond(self, message: str, scenario: str, records: list[dict], *, correction_of: dict | None = None,
+                change_from: dict | None = None, history: list[dict] | None = None, demo: bool = False,
+                tone_context: dict | None = None) -> Reply: ...
 
 
 class MockResponder:
-    def respond(self, message, scenario, records, correction_of=None, change_from=None):
+    provider = 'mock'
+    model = 'mock-fixed'
+
+    # history・demo・tone_contextは契約上受け取るが、固定応答では使わない。
+    def respond(self, message, scenario, records, *, correction_of=None, change_from=None, history=None, demo=False, tone_context=None):
         if change_from is not None:
             return Reply('考えが変わったという本人の申告を受け取りました。誤入力の修正とは区別し、以前の記録を残す保存候補を作成しました。まだ長期記録には保存していません。',
                          '保存確認で、新しい考え・変わった理由・文脈を確認して承認してください。', [change_from])

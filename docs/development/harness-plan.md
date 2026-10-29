@@ -10,7 +10,7 @@
 |---|---|---|---|
 |1・方針未決|初版をモックとする開発方針と、Gemini実通信を前提とする現行製品仕様の衝突を解消する|[AGENTS.md](../../AGENTS.md)、[現行機能要件](../requirements/functional-requirements.md)、[内部設計](../design/internal-design.md)、api.py。全画面のモック明示・実API対象外という指示と通常実装が一致しない|ユーザーと採用方針を確定し、文書初稿を先に更新する。その後、規約・要件・設計・実装・受入条件を同じ方針へ揃える。確定前に一方を暗黙に正本として実装を変更しない|
 |2・未対応|手入力と音声入力の送信を共通で排他制御する|frontend/src/App.tsxのVoiceInputへのenabledはbusyを含まず、共通sendにも実行中チェックがない。[外部設計](../design/external-design.md)の「処理中は操作ボタン無効」、FR-026 / AT-046|手入力の応答待ちに音声送信できないこと、逆方向でも追加送信できないことを遅延APIのVitestで確認する。完了・失敗後の再送信、下書き保持も確認する。現在は静的コード確認による指摘で、交差送信の再現テストは未追加|
-|3・未対応|通常応答器の交換に必要なResponder契約を定義する|src/self_dialogue_lab/responder.pyのProtocolに対し、service.pyはhistory・demo・任意のtone_contextとmodel属性を要求する。NFR-013 / AT-032〜034,039|通常の注入境界と契約を揃え、契約に従う代替応答器で対話・保存・参照境界を検証する。検証用MockResponderとの互換性も確認する|
+|3・対応済み（refactor/responder-contract）|通常応答器の交換に必要なResponder契約を定義する|src/self_dialogue_lab/responder.pyのProtocolに対し、service.pyはhistory・demo・任意のtone_contextとmodel属性を要求する。NFR-013 / AT-032〜034,039|通常の注入境界と契約を揃え、契約に従う代替応答器で対話・保存・参照境界を検証する。検証用MockResponderとの互換性も確認する。対応：[内部設計の応答器の契約](../design/internal-design.md#応答器の契約)、tests/test_responder_contract.py。通常画面の既定応答器は変えておらず、順序1の方針は未決のまま|
 |4・未対応|文書の現状説明を更新し、過去の調査記録と分ける|本書の現状表・未コミット変更の記述、内部設計のsentiment.py責務表にある「対話への送信なし」。現在のdocs/README.md対応表はReact/APIへ更新済み|現状表をmainに合わせ、過去記録には対象時点を明示する。トーンの表示用分析とFR-027の任意送信を区別し、詳細は担当節へリンクする|
 |5・用途の整理が必要|差分レビューとmain全体の設計整合レビューの実行方法を区別する|scripts/review.pyはchanges内のファイルだけを指摘対象にする。クリーンなmainの全体レビューを既定のHEAD比較では実施できない|差分レビューの比較元指定手順と、全体照合の手順・結果記録先を明記する。全体レビューの自動化は未決であり、既存ハーネスで対応済みとは扱わない|
 

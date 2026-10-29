@@ -143,7 +143,7 @@ flowchart LR
 2. 発言を受け取るとconverse_personalがcurrent_records()の全IDを取得する。
 3. converse_geminiが送信確認、空白、IDの有効性を検証し、Gemini履歴の直近10往復を取得する。
 4. GeminiResponderへ発言、現在の記憶、会話文脈を渡す。候補テーブル・評価・画像は渡さない。
-5. 生成結果の形式と参照IDを検証する。通過後に発言・返答・候補を同じトランザクションで保存。
+5. 生成結果の形式と参照IDをGeminiResponderが検証し、serviceも応答器と独立に参照IDを検証する（[応答器の契約](#応答器の契約)）。通過後に発言・返答・候補を同じトランザクションで保存。
 6. 本人が後で候補を承認したときだけrecordsへ追加する。次回の手順2から記憶として含まれる。
 
 会話文脈は当時のやり取りで、未承認候補の元発言も含み得ます。長期記憶と同じ扱いにはしない指示をAPIへ付けます。拒否した発言を会話から消す操作ではない点に注意します。
@@ -168,6 +168,7 @@ flowchart LR
 |---|---|---|
 |ValueError（入力不備・処理済み等）|400|業務処理の文言|
 |GeminiError|502|gemini.pyの固定文言|
+|ResponderError（応答器の返答の参照・形式不備）|502|service.pyの固定文言|
 |SentimentError / VoiceError|422|各モジュールの固定文言|
 |保存JSONの形式不備|500|「保存データの形式を確認してください。」|
 |sqlite3.Error / OSError|500|「保存データにアクセスできません。…」|
@@ -202,7 +203,7 @@ flowchart LR
 
 recordsとmessagesは独立して保持します。候補はmessage_idで根拠に結び付き、承認で記録を追加しますが、候補に承認先record IDを保持する列はありません。そのため会話の「保存した回答」という表示は当時の承認状態であり、現在有効な記憶はrecords側から確認します。
 
-旧応答のprovider省略はmock扱い。通常UIでも旧データを削除せず、生成元を正しく表示します。responses.refsとbody.correction_ofはJSON内の業務上の関連で、DBのFKではありません。
+画面状態のreply.providerは保存されたprovider文字列。旧応答のprovider省略はmock扱い。通常UIでも旧データを削除せず、生成元を正しく表示します。responses.refsとbody.correction_ofはJSON内の業務上の関連で、DBのFKではありません。
 
 ## 現在の記憶
 
@@ -222,27 +223,29 @@ current_records()はsuperseded=0の行を日時・ID降順で返します。通�
 
 ## 応答器の契約
 
-（初稿・実装前の案）通常経路（converse_gemini / converse_personal）へ注入する応答器が満たす契約です。GeminiResponderと検証用MockResponderはこの契約に従い、テスト用の代替応答器も同じ契約で差し替えます。どの応答器を通常画面の既定にするかは本節では決めません（現状どおりGeminiResponder。方針の衝突は[引き継ぎ表](../development/harness-plan.md)の順序1で未決）。
+通常経路（converse_gemini / converse_personal）へ注入する応答器が満たす契約です。GeminiResponderと検証用MockResponderはこの契約に従い、テスト用の代替応答器も同じ契約で差し替えます。どの応答器を通常画面の既定にするかは本節では決めません（現状どおりGeminiResponder。方針の衝突は[引き継ぎ表](../development/harness-plan.md)の順序1で未決）。
 
 |項目|契約|
 |---|---|
-|属性 provider: str|生成元の識別子。GeminiResponderは`gemini`、MockResponderは`mock`。serviceはこの値をresponses.body.providerへ保存する|
-|属性 model: str|モデル・版の識別子。responses.body.modelへ保存する|
-|respond|`respond(message, scenario, records, *, correction_of=None, change_from=None, history=None, demo=False, tone_context=None) -> Reply`|
-|records|serviceが選んだ現在の記憶（current_records由来）だけ。未承認・拒否候補、過去扱い・削除済みの記録は渡さない|
+|属性 provider: str|生成元の識別子。GeminiResponderは`gemini`、MockResponderは`mock`。converse_geminiは呼出し前にこの値を読み、responses.body.providerへ保存する。検証用converse（lab）は従来どおり`mock`を保存する|
+|属性 model: str|モデル・版の識別子（MockResponderは`mock-fixed`）。responses.body.modelへ保存する。APIの画面状態には含めない|
+|respond|`respond(message, scenario, records, *, correction_of=None, change_from=None, history=None, demo=False, tone_context=None) -> Reply`。message・scenario・recordsは位置引数、残りはキーワード専用。responder.pyのResponder（Protocol）が正本|
+|records|serviceが選んだ現在の記憶（current_records由来）の複製だけ。未承認・拒否候補、過去扱い・削除済みの記録は渡さない。応答器が辞書を書き換えても保存内容に影響しない|
 |history|会話文脈。serviceは常に渡す（文脈なしでは空配列）|
 |demo|架空データかどうか。通常経路は常にFalseを渡す|
 |tone_context|任意機能。serviceはNoneのとき引数自体を渡さない（現状維持）。応答器は受け取れる必要があるが、使わなくてよい|
 |change_from|検証用converseの変化処理だけが使う。通常経路では渡さない|
 |戻り値 Reply.references|今回渡したrecordsのうち実際に使った記録。serviceは保存前に、各参照のIDが今回渡したIDに含まれるかを応答器と独立に検証し、範囲外のIDを含む返答は保存せず拒否する。保存する写しは応答器の返した辞書ではなくDBから取得した記録で置き換える|
 
-範囲外の参照を含む返答は、APIの送信失敗と同じく安全な固定文言で通知し、発言・返答・候補を保存せず（一括ロールバック）、自動再試行や固定応答への切替をしません（NFR-012、AT-039）。
+範囲外の参照・形式不備（interpretation/questionが文字列でない、referencesが配列でない等）の返答はservice._validate_replyがResponderError（responder.py）にします。APIは502と固定文言「応答の形式・参照記録を確認できませんでした。会話は保存していません。もう一度送信してください。」で通知し、発言・返答・候補を保存せず（一括ロールバック）、自動再試行や固定応答への切替をしません（NFR-012、AT-039）。
 
-代替応答器を使ったテストの成功は、契約と保存・参照境界の確認であり、実モデルの理解力や対話品質の評価ではありません。
+代替応答器を使ったテストの成功は、契約と保存・参照境界の確認であり、実モデルの理解力や対話品質の評価ではありません。契約の確認は[受入テスト](../testing/acceptance-tests.md#実装自動テストとの対応)のAT-032〜034,039とtests/test_responder_contract.pyです。
+
+候補の文脈（candidates.context）はproviderで決めます。`gemini`は「Geminiチャットの本人発言（原文候補）」、`mock`は「対話からの保存候補（固定モック）」、それ以外は「チャットの本人発言（原文候補）」。Gemini履歴（gemini_history）はprovider=`gemini`の往復だけを対象とする現状を維持します。
 
 ## Geminiの内部契約
 
-`GeminiResponder.respond(message, scenario, records, correction_of=None, change_from=None, history=None, demo=False, tone_context=None) → Reply`。
+`GeminiResponder.respond(message, scenario, records, *, correction_of=None, change_from=None, history=None, demo=False, tone_context=None) → Reply`、provider=`gemini`。[応答器の契約](#応答器の契約)に従います。
 
 Replyはinterpretation（本文）、question（問い）、references（DB由来の記録写し）。通常のconverse_personalはdemo=Falseで呼び、scenario選択や明示訂正IDをユーザーに求めません。訂正は通常の発言として会話文脈へ入ります。
 

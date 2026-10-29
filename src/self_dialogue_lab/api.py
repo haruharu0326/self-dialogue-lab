@@ -14,6 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from .gemini import GeminiError, GeminiResponder
+from .responder import ResponderError
 from .sentiment import SentimentError, analyze
 from .service import converse_personal
 from .store import Store
@@ -61,7 +62,8 @@ def _exchanges(store):
                 'id': row['id'],
                 'message': row['source'],
                 'candidate': candidate and {'id': candidate['id'], 'status': candidate['status'], 'thought': candidate['thought']},
-                'reply': {'provider': 'gemini' if body.get('provider') == 'gemini' else 'mock',
+                # 生成元は保存時のresponder.provider。旧データの省略はmock扱い。
+                'reply': {'provider': body.get('provider') if isinstance(body.get('provider'), str) and body['provider'] else 'mock',
                           'interpretation': body['interpretation'], 'question': body['question']},
                 'refs': [{'thought': ref['thought']} for ref in json.loads(row['refs'])],
             })
@@ -112,6 +114,7 @@ def create_app(db_path=None, *, responder_factory=None, transcriber=None, analyz
         return _detail(400, str(error))
 
     @app.exception_handler(GeminiError)
+    @app.exception_handler(ResponderError)
     async def gemini_failed(request, error):
         return _detail(502, str(error))
 
