@@ -168,7 +168,7 @@ flowchart LR
 |---|---|---|
 |ValueError（入力不備・処理済み等）|400|業務処理の文言|
 |GeminiError|502|gemini.pyの固定文言|
-|ResponderError（応答器の返答の参照・形式不備）|502|service.pyの固定文言|
+|ResponderError（応答器の返答の参照・形式不備、provider・modelの不備）|502|service.pyの固定文言（REPLY_ERROR、IDENTITY_ERROR）|
 |SentimentError / VoiceError|422|各モジュールの固定文言|
 |保存JSONの形式不備|500|「保存データの形式を確認してください。」|
 |sqlite3.Error / OSError|500|「保存データにアクセスできません。…」|
@@ -239,7 +239,7 @@ current_records()はsuperseded=0の行を日時・ID降順で返します。通�
 |失敗の通知|応答器の失敗はResponderError（またはそのアダプター固有の同等の例外。GeminiErrorなど）で、ユーザー向けの安全な固定文言だけを持たせて通知する。それ以外の例外は契約違反で、APIでは500になり、何も保存しない|
 |戻り値 Reply.references|今回渡したrecordsのうち実際に使った記録。serviceは保存前に、各参照のIDが今回渡したIDに含まれるかを応答器と独立に検証し、範囲外のIDを含む返答は保存せず拒否する。保存する写しは応答器の返した辞書ではなくDBから取得した記録で置き換える|
 
-範囲外の参照・形式不備（interpretationが空白のみ・文字列でない、questionが文字列でない、referencesが配列でない等）の返答はservice._validate_replyがResponderError（responder.py）にします。APIは502と固定文言「応答の形式・参照記録を確認できませんでした。会話は保存していません。もう一度送信してください。」で通知し、保存処理の前に拒否し（何も保存しない）、自動再試行や固定応答への切替をしません（NFR-012、AT-039）。
+範囲外の参照・形式不備（interpretationが空白のみ・文字列でない、questionが文字列でない、referencesが配列でない等）の返答はservice._validate_replyがResponderError（responder.py）にします。APIは502と固定文言「応答の形式・参照記録を確認できませんでした。会話は保存していません。もう一度送信してください。」で通知し、保存処理の前に拒否し（何も保存しない）、自動再試行や固定応答への切替をしません（NFR-012、AT-039）。応答器のprovider・modelが空でない文字列でない場合は、応答器を呼ぶ前に同じくResponderErrorとし、502と固定文言「応答器の設定（provider・model）を確認できませんでした。会話は保存していません。」で通知します。
 
 代替応答器を使ったテストの成功は、契約と保存・参照境界の確認であり、実モデルの理解力や対話品質の評価ではありません。契約の確認は[受入テスト](../testing/acceptance-tests.md#実装自動テストとの対応)のAT-032〜034,039とtests/test_responder_contract.pyです。
 
