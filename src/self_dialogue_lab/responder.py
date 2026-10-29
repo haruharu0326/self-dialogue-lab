@@ -14,7 +14,8 @@ class ResponderError(RuntimeError):
 
 
 class Responder(Protocol):
-    """通常経路へ注入する応答器の契約。詳細はdocs/design/internal-design.mdの「応答器の契約」。"""
+    """通常経路へ注入する応答器の契約。失敗は安全な固定文言だけを持つResponderError等で通知する。
+    詳細はdocs/design/internal-design.mdの「応答器の契約」。"""
     provider: str
     model: str
 

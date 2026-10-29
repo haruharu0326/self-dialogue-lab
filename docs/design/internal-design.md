@@ -203,7 +203,7 @@ flowchart LR
 
 recordsとmessagesは独立して保持します。候補はmessage_idで根拠に結び付き、承認で記録を追加しますが、候補に承認先record IDを保持する列はありません。そのため会話の「保存した回答」という表示は当時の承認状態であり、現在有効な記憶はrecords側から確認します。
 
-画面状態のreply.providerは保存されたprovider文字列。旧応答のprovider省略はmock扱い。通常UIでも旧データを削除せず、生成元を正しく表示します。responses.refsとbody.correction_ofはJSON内の業務上の関連で、DBのFKではありません。
+画面状態のreply.providerは保存されたproviderが`gemini`ならgemini、それ以外と旧応答のprovider省略はmock扱い。通常UIでも旧データを削除せず、生成元を正しく表示します。responses.refsとbody.correction_ofはJSON内の業務上の関連で、DBのFKではありません。
 
 ## 現在の記憶
 
@@ -223,11 +223,11 @@ current_records()はsuperseded=0の行を日時・ID降順で返します。通�
 
 ## 応答器の契約
 
-通常経路（converse_gemini / converse_personal）へ注入する応答器が満たす契約です。GeminiResponderと検証用MockResponderはこの契約に従い、テスト用の代替応答器も同じ契約で差し替えます。どの応答器を通常画面の既定にするかは本節では決めません（現状どおりGeminiResponder。方針の衝突は[引き継ぎ表](../development/harness-plan.md)の順序1で未決）。
+通常経路（converse_gemini / converse_personal）へ注入する応答器が満たす契約です。GeminiResponderと検証用MockResponderはこの契約に従い、テスト用の代替応答器も同じ契約で差し替えます。既定の応答器はこのブランチでは変えていません（現状はGeminiResponder）。既定の切り替えは2026-10-29の方針決定に基づき、FR-028／feature/responder-modeで行います。契約の適用範囲は通常経路だけで、応答評価CLIのEvaluationMock（evaluation.py）は対象外です。
 
 |項目|契約|
 |---|---|
-|属性 provider: str|生成元の識別子。GeminiResponderは`gemini`、MockResponderは`mock`。converse_geminiは呼出し前にこの値を読み、responses.body.providerへ保存する。検証用converse（lab）は従来どおり`mock`を保存する|
+|属性 provider: str|生成元の識別子。GeminiResponderは`gemini`、MockResponderは`mock`。converse_geminiは呼出し前にproviderとmodelが空でない文字列かを検証し（違反はResponderError、応答器を呼ばず何も保存しない）、responses.body.providerへ保存する。検証用converse（lab）は従来どおり`mock`を保存する。画面状態のreply.providerは`gemini`以外を`mock`へ正規化する（表示文言はFR-028で決める）|
 |属性 model: str|モデル・版の識別子（MockResponderは`mock-fixed`）。responses.body.modelへ保存する。APIの画面状態には含めない|
 |respond|`respond(message, scenario, records, *, correction_of=None, change_from=None, history=None, demo=False, tone_context=None) -> Reply`。message・scenario・recordsは位置引数、残りはキーワード専用。responder.pyのResponder（Protocol）が正本|
 |records|serviceが選んだ現在の記憶（current_records由来）の複製だけ。未承認・拒否候補、過去扱い・削除済みの記録は渡さない。応答器が辞書を書き換えても保存内容に影響しない|
@@ -235,13 +235,15 @@ current_records()はsuperseded=0の行を日時・ID降順で返します。通�
 |demo|架空データかどうか。通常経路は常にFalseを渡す|
 |tone_context|任意機能。serviceはNoneのとき引数自体を渡さない（現状維持）。応答器は受け取れる必要があるが、使わなくてよい|
 |change_from|検証用converseの変化処理だけが使う。通常経路では渡さない|
+|戻り値 Reply.interpretation / question|interpretationは空白のみ不可の文字列、questionは文字列（空可）。GeminiResponder・応答評価CLIの基準に揃える|
+|失敗の通知|応答器の失敗はResponderError（またはそのアダプター固有の同等の例外。GeminiErrorなど）で、ユーザー向けの安全な固定文言だけを持たせて通知する。それ以外の例外は契約違反で、APIでは500になり、何も保存しない|
 |戻り値 Reply.references|今回渡したrecordsのうち実際に使った記録。serviceは保存前に、各参照のIDが今回渡したIDに含まれるかを応答器と独立に検証し、範囲外のIDを含む返答は保存せず拒否する。保存する写しは応答器の返した辞書ではなくDBから取得した記録で置き換える|
 
-範囲外の参照・形式不備（interpretation/questionが文字列でない、referencesが配列でない等）の返答はservice._validate_replyがResponderError（responder.py）にします。APIは502と固定文言「応答の形式・参照記録を確認できませんでした。会話は保存していません。もう一度送信してください。」で通知し、発言・返答・候補を保存せず（一括ロールバック）、自動再試行や固定応答への切替をしません（NFR-012、AT-039）。
+範囲外の参照・形式不備（interpretationが空白のみ・文字列でない、questionが文字列でない、referencesが配列でない等）の返答はservice._validate_replyがResponderError（responder.py）にします。APIは502と固定文言「応答の形式・参照記録を確認できませんでした。会話は保存していません。もう一度送信してください。」で通知し、保存処理の前に拒否し（何も保存しない）、自動再試行や固定応答への切替をしません（NFR-012、AT-039）。
 
 代替応答器を使ったテストの成功は、契約と保存・参照境界の確認であり、実モデルの理解力や対話品質の評価ではありません。契約の確認は[受入テスト](../testing/acceptance-tests.md#実装自動テストとの対応)のAT-032〜034,039とtests/test_responder_contract.pyです。
 
-候補の文脈（candidates.context）はproviderで決めます。`gemini`は「Geminiチャットの本人発言（原文候補）」、`mock`は「対話からの保存候補（固定モック）」、それ以外は「チャットの本人発言（原文候補）」。Gemini履歴（gemini_history）はprovider=`gemini`の往復だけを対象とする現状を維持します。
+候補の文脈（candidates.context）はproviderで決めます。`gemini`は「Geminiチャットの本人発言（原文候補）」、`mock`は「対話からの保存候補（固定モック）」、それ以外は「チャットの本人発言（原文候補）」。Gemini履歴（gemini_history）はprovider=`gemini`の往復だけを対象とする現状を維持します。他のproviderの応答器では自身の過去の往復が会話文脈に入らないため、履歴の対象はfeature/responder-mode（FR-028）への引き継ぎ事項です。
 
 ## Geminiの内部契約
 

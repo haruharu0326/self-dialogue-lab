@@ -2,6 +2,7 @@ import json
 from .responder import Reply, Responder, ResponderError
 
 REPLY_ERROR = '応答の形式・参照記録を確認できませんでした。会話は保存していません。もう一度送信してください。'
+IDENTITY_ERROR = '応答器の設定（provider・model）を確認できませんでした。会話は保存していません。'
 
 
 def converse(store, responder: Responder, message, scenario, correction_of=None, previous_id=None, reason='', context=''):
@@ -43,7 +44,9 @@ def converse_gemini(store, responder: Responder, message, *, reference_ids=(), i
             raise ValueError('訂正する応答が見つかりません')
         body = json.loads(rows[0]['body'])
         target = {'interpretation': body['interpretation'], 'question': body['question']}
-    provider, model = responder.provider, responder.model
+    provider, model = getattr(responder, 'provider', None), getattr(responder, 'model', None)
+    if not all(isinstance(value, str) and value.strip() for value in (provider, model)):
+        raise ResponderError(IDENTITY_ERROR)
     supplied = [current[id] for id in dict.fromkeys(reference_ids)]
     options = {'tone_context': tone_context} if tone_context is not None else {}
     # 応答器には写しを渡し、保存する参照はDBから取得した記録で組み立てる。
@@ -64,7 +67,7 @@ def _validate_reply(reply, supplied):
     """応答器と独立に、今回渡した記録以外を参照する返答を保存前に拒否する。"""
     by_id = {r['id']: r for r in supplied}
     try:
-        if (not isinstance(reply.interpretation, str) or not isinstance(reply.question, str)
+        if (not isinstance(reply.interpretation, str) or not reply.interpretation.strip() or not isinstance(reply.question, str)
                 or not isinstance(reply.references, list)):
             raise TypeError('invalid reply')
         ids = [ref['id'] for ref in reply.references]

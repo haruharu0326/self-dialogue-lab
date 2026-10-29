@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 from self_dialogue_lab.api import create_app
 from self_dialogue_lab.gemini import GeminiResponder
 from self_dialogue_lab.responder import MockResponder, Reply, Responder, ResponderError
-from self_dialogue_lab.service import REPLY_ERROR, converse_gemini, converse_personal
+from self_dialogue_lab.service import IDENTITY_ERROR, REPLY_ERROR, converse_gemini, converse_personal
 from self_dialogue_lab.store import Store
 
 CONTRACT = [('self', inspect.Parameter.POSITIONAL_OR_KEYWORD, inspect.Parameter.empty),
@@ -27,10 +27,11 @@ class StrictResponder:
     provider = 'strict-test'
     model = 'strict-test-v1'
 
-    def __init__(self, refs=None, mutate=False):
+    def __init__(self, refs=None, mutate=False, text='代替応答器の返答', question='その理由は何ですか？'):
         self.calls = []
         self.refs = refs
         self.mutate = mutate
+        self.text, self.question = text, question
 
     def respond(self, message, scenario, records, *, correction_of=None, change_from=None, history=None, demo=False, tone_context=None):
         self.calls.append({'message': message, 'records': records, 'correction_of': correction_of, 'change_from': change_from,
@@ -39,7 +40,7 @@ class StrictResponder:
             for record in records:
                 record['thought'] = '応答器が書き換えた本文'
         refs = records if self.refs is None else self.refs
-        return Reply('代替応答器の返答', 'その理由は何ですか？', refs)
+        return Reply(self.text, self.question, refs)
 
 
 def signature(method):
@@ -143,7 +144,11 @@ def test_api_shows_saved_provider_and_rejects_fake_references(tmp_path, monkeypa
     app = create_app(str(path), responder_factory=lambda: StrictResponder(refs=factory['refs']), static_dir=tmp_path / 'missing')
     client = TestClient(app, base_url='http://127.0.0.1:8501')
     state = client.post('/api/messages', json={'text': '家族との時間', 'consent': True}).json()
-    assert state['exchanges'][0]['reply']['provider'] == 'strict-test'
+    # 表示文言はFR-028で決めるため、画面状態ではgemini以外をmockへ正規化する。DBには実際のproviderを残す。
+    assert state['exchanges'][0]['reply']['provider'] == 'mock'
+    db = Store(path)
+    assert json.loads(db.rows('SELECT body FROM responses')[0]['body'])['provider'] == 'strict-test'
+    db.db.close()
 
     factory['refs'] = [{'id': 999, 'thought': '架空の記録'}]
     db = Store(path)
@@ -152,3 +157,58 @@ def test_api_shows_saved_provider_and_rejects_fake_references(tmp_path, monkeypa
     assert response.status_code == 502 and response.json() == {'detail': REPLY_ERROR}
     assert counts(db) == before
     db.db.close()
+
+
+@pytest.mark.parametrize('attribute,value', [('provider', ''), ('provider', '  '), ('provider', None), ('model', ''),
+                                             ('model', 1), ('provider', 'missing'), ('model', 'missing')])
+def test_provider_and_model_must_be_non_empty_strings(db, attribute, value):
+    responder = StrictResponder()
+    if value == 'missing':
+        class Anonymous:
+            respond = staticmethod(responder.respond)
+        target = Anonymous()
+        setattr(target, 'model' if attribute == 'provider' else 'provider', 'x')
+    else:
+        target = responder
+        setattr(target, attribute, value)
+    before = counts(db)
+    with pytest.raises(ResponderError) as error:
+        converse_personal(db, target, '相談', consent=True)
+    assert str(error.value) == IDENTITY_ERROR
+    assert responder.calls == [] and counts(db) == before
+
+
+@pytest.mark.parametrize('text', ['', '   ', '\n'])
+def test_blank_interpretation_is_rejected_before_saving(db, text):
+    before = counts(db)
+    with pytest.raises(ResponderError):
+        converse_personal(db, StrictResponder(text=text), '相談', consent=True)
+    assert counts(db) == before
+
+
+def test_empty_question_is_allowed_like_the_gemini_adapter(db):
+    converse_personal(db, StrictResponder(question=''), '相談', consent=True)
+    assert json.loads(db.rows('SELECT body FROM responses')[0]['body'])['question'] == ''
+
+
+class Crashing(StrictResponder):
+    def respond(self, message, scenario, records, *, correction_of=None, change_from=None, history=None, demo=False, tone_context=None):
+        raise RuntimeError('内部の詳細を含む例外')
+
+
+def test_unexpected_responder_exception_saves_nothing(db, tmp_path, monkeypatch):
+    """契約違反の任意の例外は何も保存しない。現状、APIでは500になる（例外文は返さない）。"""
+    before = counts(db)
+    with pytest.raises(RuntimeError):
+        converse_personal(db, Crashing(), '相談', consent=True)
+    assert counts(db) == before
+
+    monkeypatch.setenv('GEMINI_API_KEY', 'test-key')
+    path = tmp_path / 'api' / 'personal.sqlite3'
+    app = create_app(str(path), responder_factory=Crashing, static_dir=tmp_path / 'missing')
+    client = TestClient(app, base_url='http://127.0.0.1:8501', raise_server_exceptions=False)
+    response = client.post('/api/messages', json={'text': '相談', 'consent': True})
+    assert response.status_code == 500 and '内部の詳細' not in response.text
+    api_db = Store(path)
+    assert counts(api_db) == {'messages': 0, 'responses': 0, 'candidates': 0, 'records': 0}
+    api_db.db.close()

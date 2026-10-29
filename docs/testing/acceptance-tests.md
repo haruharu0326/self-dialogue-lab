@@ -91,7 +91,7 @@ AT-045 / FR-025,NFR-007,008,011：保存済み本人発言について、モデ�
 
 ### 応答器の契約（2026-10-29）
 
-refactor/responder-contractで[応答器の契約](../design/internal-design.md#応答器の契約)を定義（NFR-013、AT-032〜034,039）。製品FR/NFR/ATの追加はなく、通常画面の既定応答器（GeminiResponder）も変更していません。Windows / Python 3.13.7でpytest 160成功・7スキップ。スキップ7件はエージェント環境にStreamlit（検証用画面の任意依存）が未導入のためで、lab_ui.pyの例外捕捉の変更は構文確認だけです。既存の代替応答器2件（test_api.py、test_simple_chat.py）にprovider属性を追加しました。serviceの参照ID検証を外すとtests/test_responder_contract.pyの8件が失敗することも確認しました。代替応答器のテスト成功は契約と保存・参照境界の確認であり、実モデルの対話品質の評価ではありません。Vitest・起動確認・実Gemini通信は本記録では未実施です。
+refactor/responder-contractで[応答器の契約](../design/internal-design.md#応答器の契約)を定義（NFR-013、AT-032〜034,039）。製品FR/NFR/ATの追加はなく、通常画面の既定応答器（GeminiResponder）も変更していません。Windows / Python 3.13.7でpytest 160成功・7スキップ。スキップ7件はエージェント環境にStreamlit（検証用画面の任意依存）が未導入のためで、lab_ui.pyの例外捕捉の変更は構文確認だけです。既存の代替応答器2件（test_api.py、test_simple_chat.py）にprovider属性を追加しました。serviceの参照ID検証を外すとtests/test_responder_contract.pyの8件が失敗することも確認しました。レビュー対応で、provider・modelの空値、interpretationの空白のみ、任意例外での非保存（APIは500）のテストを追加し、画面状態のproviderを従来どおりgemini/mockの2値に戻しました。再実行はpytest 172成功・7スキップ（理由は同じ）。代替応答器のテスト成功は契約と保存・参照境界の確認であり、実モデルの対話品質の評価ではありません。Vitest・起動確認・実Gemini通信は本記録では未実施です。
 
 ### 通常画面の見た目「藍の帳面」（2026-10-25）
 

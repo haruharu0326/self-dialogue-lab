@@ -62,8 +62,7 @@ def _exchanges(store):
                 'id': row['id'],
                 'message': row['source'],
                 'candidate': candidate and {'id': candidate['id'], 'status': candidate['status'], 'thought': candidate['thought']},
-                # 生成元は保存時のresponder.provider。旧データの省略はmock扱い。
-                'reply': {'provider': body.get('provider') if isinstance(body.get('provider'), str) and body['provider'] else 'mock',
+                'reply': {'provider': 'gemini' if body.get('provider') == 'gemini' else 'mock',
                           'interpretation': body['interpretation'], 'question': body['question']},
                 'refs': [{'thought': ref['thought']} for ref in json.loads(row['refs'])],
             })
