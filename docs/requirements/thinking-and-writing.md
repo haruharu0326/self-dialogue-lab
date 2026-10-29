@@ -131,7 +131,7 @@ FFR-007は、本人が確認した下書き本文をMarkdownでクリップボ�
 
 ### 5. 実装順と番号の対応方針
 
-実装順は次のとおり。A2（Responder契約、ブランチ`refactor/responder-contract`で対応中）→A1（送信排他、PR #6 `fix/send-mutual-exclusion`で対応中）は[harness-plan](../development/harness-plan.md#次回対応への引き継ぎ2026-10-25-mainレビュー)の引き継ぎ表の行3・行2。
+実装順は次のとおり。A2（Responder契約、PR #8 `refactor/responder-contract`で対応済み）→A1（送信排他、PR #6 `fix/send-mutual-exclusion`で対応中）は[harness-plan](../development/harness-plan.md#次回対応への引き継ぎ2026-10-25-mainレビュー)の引き継ぎ表の行3・行2。
 
 1. responder-mode（FR-028、ブランチ想定`feature/responder-mode`）
 2. FFR-001 → 002 → 003 → 004 → 005 → 006 → 008 → 007

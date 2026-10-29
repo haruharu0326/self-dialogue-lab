@@ -13,6 +13,7 @@ from self_dialogue_lab.voice import MAX_BYTES, VoiceError
 
 
 class Responder:
+    provider = 'gemini'  # Gemini経路の代替（履歴はprovider=geminiの往復だけ）
     model = 'test-adapter'
     sent = []
     fail = False

@@ -6,6 +6,7 @@ from self_dialogue_lab.store import Store
 
 
 class CapturingResponder:
+    provider = 'gemini'  # Gemini経路の代替（履歴はprovider=geminiの往復だけ）
     model = 'test-adapter'
 
     def __init__(self):
