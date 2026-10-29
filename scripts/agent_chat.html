@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>開発チャット</title>
+<style>
+:root {
+  --side: #2e2440; --side-ink: #d9d2e6; --side-muted: #a397b8; --side-hover: #3c3052; --side-active: #5a4a85;
+  --bg: #ffffff; --ink: #1f1d24; --muted: #6d6878; --line: #e7e4ec; --hover: #f7f5fa;
+  --chip: #f1eef6; --link: #4b5fc4; --mention-bg: #fff3d6; --mention-ink: #8a5a00;
+  --work: #e8833a; --done: #2f9d62; --wait: #8a8496; --stale: #c0504d; --online: #2fbf71;
+  --code-bg: #f4f2f7; --system: #8f8a99;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --side: #19151f; --side-ink: #d6d0df; --side-muted: #8e869c; --side-hover: #262030; --side-active: #43386a;
+    --bg: #1d1b22; --ink: #e8e5ee; --muted: #a49eb0; --line: #2f2c37; --hover: #24212b;
+    --chip: #2b2833; --link: #9aa8ff; --mention-bg: #3d3214; --mention-ink: #f0c66b;
+    --code-bg: #26232e; --system: #8a8495;
+  }
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; font-family: "Hiragino Sans", "Yu Gothic UI", "Meiryo", system-ui, sans-serif; color: var(--ink); background: var(--bg); font-size: 14.5px; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+.app { display: grid; grid-template-columns: 250px minmax(0, 1fr) auto; height: 100vh; }
+
+/* サイドバー */
+.side { background: var(--side); color: var(--side-ink); display: flex; flex-direction: column; min-height: 0; }
+.ws { padding: 16px 16px 12px; border-bottom: 1px solid rgba(255, 255, 255, .08); }
+.ws b { display: block; font-size: 16px; }
+.ws small { color: var(--side-muted); font-size: 12px; }
+.conn { display: inline-flex; align-items: center; gap: 5px; margin-top: 6px; font-size: 12px; color: var(--side-muted); }
+.conn::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--work); }
+.conn.live::before { background: var(--online); }
+.side nav { overflow: auto; padding: 10px 8px 16px; flex: 1; }
+.side h3 { margin: 14px 10px 6px; font-size: 12.5px; font-weight: 600; color: var(--side-muted); }
+.item { display: flex; align-items: center; gap: 8px; width: 100%; padding: 5px 10px; border-radius: 6px; text-align: left; color: var(--side-ink); }
+.item:hover { background: var(--side-hover); }
+.item.active { background: var(--side-active); color: #fff; }
+.item .hash { width: 16px; text-align: center; color: var(--side-muted); }
+.item.active .hash { color: #fff; }
+.item .sub { margin-left: auto; font-size: 11px; color: var(--side-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90px; }
+.item .badge { margin-left: auto; font-size: 11px; font-weight: 700; padding: 0 6px; border-radius: 9px; background: var(--work); color: #fff; }
+.presence { position: relative; width: 20px; height: 20px; border-radius: 5px; flex: none; display: grid; place-items: center; font-size: 9.5px; font-weight: 800; color: #fff; }
+.presence::after { content: ""; position: absolute; right: -3px; bottom: -3px; width: 9px; height: 9px; border-radius: 50%; border: 2px solid var(--side); background: var(--side-muted); }
+.presence.on::after { background: var(--online); }
+
+/* メイン */
+.main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.head { display: flex; align-items: center; gap: 10px; padding: 12px 20px; border-bottom: 1px solid var(--line); min-height: 56px; }
+.head h2 { margin: 0; font-size: 17px; }
+.head p { margin: 0; color: var(--muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.menu { display: none; font-size: 20px; padding: 2px 6px; }
+.list { flex: 1; overflow: auto; padding: 12px 0 8px; }
+.msg { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 10px; padding: 6px 20px; }
+.msg:hover { background: var(--hover); }
+.avatar { width: 36px; height: 36px; border-radius: 8px; display: grid; place-items: center; font-weight: 800; font-size: 13px; color: #fff; }
+.who { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.who b { font-size: 14.5px; }
+.who .role { font-size: 11px; padding: 0 6px; border-radius: 4px; background: var(--chip); color: var(--muted); }
+.who time { font-size: 11.5px; color: var(--muted); }
+.text { margin-top: 2px; line-height: 1.6; overflow-wrap: anywhere; }
+.mention { background: var(--mention-bg); color: var(--mention-ink); padding: 0 3px; border-radius: 3px; font-weight: 600; }
+.body { white-space: pre-wrap; margin-top: 4px; }
+.body.clamp { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.more { color: var(--link); font-size: 13px; margin-top: 2px; }
+code { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 12.5px; background: var(--code-bg); padding: 1px 4px; border-radius: 4px; }
+pre { background: var(--code-bg); padding: 10px 12px; border-radius: 8px; overflow: auto; white-space: pre-wrap; }
+.thread-chip { display: inline-flex; align-items: center; gap: 8px; margin-top: 6px; padding: 4px 8px 4px 4px; border: 1px solid transparent; border-radius: 8px; font-size: 13px; }
+.thread-chip:hover { border-color: var(--line); background: var(--bg); }
+.thread-chip .mini { width: 22px; height: 22px; border-radius: 5px; font-size: 9px; }
+.thread-chip .count { color: var(--link); font-weight: 700; }
+.thread-chip .last { color: var(--muted); }
+.status { font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 99px; color: #fff; background: var(--wait); }
+.status.running { background: var(--work); } .status.done { background: var(--done); } .status.stale { background: var(--stale); }
+.system { text-align: center; color: var(--system); font-size: 12.5px; padding: 8px 20px; }
+.system::before, .system::after { content: " — "; opacity: .5; }
+.feed-row { display: grid; grid-template-columns: 52px 20px minmax(0, 1fr); gap: 8px; align-items: center; padding: 3px 20px; font-size: 13px; }
+.feed-row:hover { background: var(--hover); }
+.feed-row time { color: var(--muted); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.feed-row .mini { width: 20px; height: 20px; border-radius: 5px; font-size: 8.5px; }
+.empty { color: var(--muted); padding: 40px 24px; text-align: center; line-height: 1.8; }
+
+.typing { min-height: 26px; padding: 2px 20px 0; font-size: 12.5px; color: var(--muted); }
+.dots { display: inline-flex; gap: 3px; margin-right: 6px; vertical-align: middle; }
+.dots i { width: 5px; height: 5px; border-radius: 50%; background: var(--muted); animation: blink 1.2s infinite; }
+.dots i:nth-child(2) { animation-delay: .2s; } .dots i:nth-child(3) { animation-delay: .4s; }
+@keyframes blink { 0%, 80%, 100% { opacity: .25; } 40% { opacity: 1; } }
+.composer { margin: 0 20px 16px; border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; color: var(--muted); font-size: 13px; }
+
+/* スレッド */
+.thread { width: 0; overflow: hidden; border-left: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; background: var(--bg); }
+.thread.open { width: 420px; }
+.thread .head { justify-content: space-between; }
+.thread .close { font-size: 20px; color: var(--muted); padding: 0 6px; }
+.thread .list { padding-top: 8px; }
+.divider { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12px; padding: 8px 20px; }
+.divider::after { content: ""; flex: 1; border-top: 1px solid var(--line); }
+.work { display: grid; grid-template-columns: 46px 18px minmax(0, 1fr); gap: 6px; padding: 2px 20px 2px 66px; font-size: 12.5px; color: var(--muted); }
+.work b { color: var(--ink); font-weight: 600; }
+
+@media (max-width: 900px) {
+  .app { grid-template-columns: minmax(0, 1fr); }
+  .side { position: fixed; inset: 0 auto 0 0; width: 250px; z-index: 5; transform: translateX(-100%); transition: transform .2s; }
+  .side.show { transform: none; }
+  .menu { display: block; }
+  .thread.open { position: fixed; inset: 0; width: auto; z-index: 6; }
+  .msg, .feed-row { padding-left: 16px; padding-right: 16px; }
+}
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side" id="side">
+    <div class="ws">
+      <b>self-dialogue-lab 開発</b>
+      <small>Claude Codeのサブエージェント</small><br>
+      <span class="conn" id="conn">接続中…</span>
+    </div>
+    <nav id="nav"></nav>
+  </aside>
+
+  <section class="main">
+    <header class="head">
+      <button class="menu" id="menu" aria-label="メニュー">☰</button>
+      <div style="min-width:0">
+        <h2 id="title"># dev-team</h2>
+        <p id="subtitle"></p>
+      </div>
+    </header>
+    <div class="list" id="list"></div>
+    <div class="typing" id="typing"></div>
+    <div class="composer">このチャットはClaude Codeのhook記録から自動で表示されます。ここから書き込むことはできません。</div>
+  </section>
+
+  <aside class="thread" id="thread">
+    <header class="head">
+      <div style="min-width:0"><h2>スレッド</h2><p id="thread-sub"></p></div>
+      <button class="close" id="close" aria-label="閉じる">×</button>
+    </header>
+    <div class="list" id="thread-list"></div>
+  </aside>
+</div>
+
+<script>
+const ICONS = { Read: '📖', Edit: '✏️', Write: '📝', NotebookEdit: '✏️', Bash: '⌨️', PowerShell: '⌨️',
+  Grep: '🔍', Glob: '🗂️', Agent: '📨', Task: '📨', WebSearch: '🌐', WebFetch: '🌐', TodoWrite: '✅' };
+const STATUS = { waiting: '受付待ち', running: '作業中', done: '完了', stale: '応答なし' };
+const view = { channel: 'dev-team', thread: null, expanded: new Set() };
+let chat = null;
+
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const hue = name => [...name].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 11);
+const initials = name => name === 'main' ? 'L' : name.split('-').map(p => p[0]).join('').slice(0, 2).toUpperCase();
+const color = name => name === 'main' ? '#4b5fc4' : `hsl(${hue(name)} 50% 46%)`;
+const avatar = (name, cls = 'avatar') => `<div class="${cls}" style="background:${color(name)}">${initials(name)}</div>`;
+const time = ts => new Date(ts * 1000).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+const memberOf = name => chat.members.find(m => m.name === name) || { name, label: name };
+const display = name => name === 'main' ? 'リーダー' : name;
+const statusOf = t => t.stale ? 'stale' : t.status;
+
+/* 報告本文の最小限の整形（コードブロック・インラインコード・太字・見出し） */
+function rich(text) {
+  return esc(text)
+    .replace(/```[\w-]*\n?([\s\S]*?)```/g, (_, code) => `<pre>${code}</pre>`)
+    .replace(/`([^`\n]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*\n]+)\*\*/g, '<b>$1</b>')
+    .replace(/^#{1,4} (.+)$/gm, '<b>$1</b>');
+}
+
+function header(name, ts) {
+  const m = memberOf(name);
+  return `<div class="who"><b>${esc(display(name))}</b><span class="role">${esc(m.label)}${m.model ? ' · ' + esc(m.model) : ''}</span><time>${time(ts)}</time></div>`;
+}
+
+function longText(id, text) {
+  const open = view.expanded.has(id);
+  const long = text.split('\n').length > 4 || text.length > 280;
+  return `<div class="body${long && !open ? ' clamp' : ''}">${rich(text)}</div>` +
+    (long ? `<button class="more" data-expand="${esc(id)}">${open ? '折りたたむ' : '続きを見る'}</button>` : '');
+}
+
+function threadMessage(t) {
+  const st = statusOf(t);
+  const lastTs = t.report_ts || t.replies.at(-1)?.ts || t.ts;
+  return `<div class="msg">${avatar(t.from)}<div>${header(t.from, t.ts)}
+    <div class="text"><span class="mention">@${esc(t.to)}</span> ${esc(t.description || '（依頼の記録なし）')}
+      ${t.prompt ? longText('p:' + t.id, t.prompt) : ''}</div>
+    <button class="thread-chip" data-thread="${esc(t.id)}">${avatar(t.to, 'avatar mini')}
+      <span class="count">${t.replies.length}件の作業${t.report ? '・報告あり' : ''}</span>
+      <span class="status ${st}">${STATUS[st]}</span><span class="last">最終 ${time(lastTs)}</span></button>
+  </div></div>`;
+}
+
+function timeline(threads, notices) {
+  const items = [...threads.map(t => ({ ts: t.ts, html: threadMessage(t) })),
+    ...notices.map(n => ({ ts: n.ts, html: `<div class="system">${esc(n.text)}（${time(n.ts)}）</div>` }))];
+  return items.sort((a, b) => a.ts - b.ts).map(i => i.html).join('');
+}
+
+function feedRows(rows) {
+  return rows.map(f => `<div class="feed-row"><time>${time(f.ts)}</time>${avatar(f.who, 'avatar mini')}
+    <span><b>${esc(display(f.who))}</b> ${ICONS[f.tool] || '🛠'} ${esc(f.tool)} <code>${esc(f.summary || '—')}</code></span></div>`).join('');
+}
+
+function renderNav() {
+  const running = chat.threads.filter(t => statusOf(t) === 'running').length;
+  const channels = [['dev-team', '依頼とスレッド', running], ['activity', '全員の作業ログ', 0]];
+  document.getElementById('nav').innerHTML = `<h3>チャンネル</h3>` +
+    channels.map(([id, , n]) => `<button class="item${view.channel === id ? ' active' : ''}" data-channel="${id}">
+      <span class="hash">#</span>${id}${n ? `<span class="badge">${n}</span>` : ''}</button>`).join('') +
+    `<h3>メンバー</h3>` + chat.members.map(m => `<button class="item${view.channel === 'dm:' + m.name ? ' active' : ''}" data-channel="dm:${esc(m.name)}">
+      <span class="presence${m.status === 'working' ? ' on' : ''}" style="background:${color(m.name)}">${initials(m.name)}</span>
+      ${esc(display(m.name))}${m.guest ? '（ゲスト）' : ''}
+      <span class="sub">${m.status === 'working' ? esc(m.tool ? `${m.tool} ${m.summary}` : '作業中') : esc(m.label)}</span></button>`).join('');
+}
+
+function renderMain() {
+  const list = document.getElementById('list');
+  const nearBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 80;
+  let html = '', title = '', sub = '';
+  if (view.channel === 'dev-team') {
+    title = '# dev-team'; sub = 'リーダーからの依頼と、サブエージェントの作業・報告';
+    html = timeline(chat.threads, chat.notices);
+  } else if (view.channel === 'activity') {
+    title = '# activity'; sub = '全員のツール実行（対象のファイル名・コマンドの先頭のみ）';
+    html = feedRows(chat.feed);
+  } else {
+    const name = view.channel.slice(3), m = memberOf(name);
+    title = display(name); sub = `${m.label}${m.model ? ' · ' + m.model : ''} — ${m.status === 'working' ? '作業中' : '待機中'}`;
+    html = name === 'main'
+      ? timeline(chat.threads.filter(t => t.from === 'main'), chat.notices)
+      : timeline(chat.threads.filter(t => t.to === name || t.from === name), []);
+  }
+  document.getElementById('title').textContent = title;
+  document.getElementById('subtitle').textContent = sub;
+  list.innerHTML = html || `<div class="empty">まだ記録がありません。<br>Claude Codeでサブエージェントに依頼すると、ここにやり取りが流れます。</div>`;
+  if (nearBottom) list.scrollTop = list.scrollHeight;
+
+  const typing = chat.members.filter(m => m.status === 'working' && m.name !== 'main').map(m => m.name);
+  document.getElementById('typing').innerHTML = typing.length
+    ? `<span class="dots"><i></i><i></i><i></i></span>${typing.map(esc).join('、')} が作業中…` : '';
+}
+
+function renderThread() {
+  const panel = document.getElementById('thread');
+  const t = chat.threads.find(x => x.id === view.thread);
+  panel.classList.toggle('open', !!t);
+  if (!t) return;
+  const st = statusOf(t);
+  document.getElementById('thread-sub').textContent = `@${t.to} · ${STATUS[st]}`;
+  const work = t.replies.map(r => `<div class="work"><time>${time(r.ts)}</time><span>${ICONS[r.tool] || '🛠'}</span>
+    <span><b>${esc(r.tool)}</b> <code>${esc(r.summary || '—')}</code></span></div>`).join('');
+  const report = t.report
+    ? `<div class="msg">${avatar(t.to)}<div>${header(t.to, t.report_ts)}<div class="text">${longText('r:' + t.id, t.report)}</div></div></div>`
+    : st === 'running' ? `<div class="typing"><span class="dots"><i></i><i></i><i></i></span>${esc(t.to)} が作業中…</div>` : '';
+  document.getElementById('thread-list').innerHTML =
+    `<div class="msg">${avatar(t.from)}<div>${header(t.from, t.ts)}<div class="text"><span class="mention">@${esc(t.to)}</span> ${esc(t.description || '（依頼の記録なし）')}
+      ${t.prompt ? `<div class="body">${rich(t.prompt)}</div>` : ''}</div></div></div>` +
+    `<div class="divider">${t.replies.length}件の作業</div>${work}` +
+    (t.report || st === 'running' ? `<div class="divider">報告</div>${report}` : '');
+}
+
+function render() {
+  if (!chat) return;
+  renderNav(); renderMain(); renderThread();
+}
+
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-channel],[data-thread],[data-expand],#close,#menu');
+  if (!el) return;
+  if (el.dataset.channel) { view.channel = el.dataset.channel; document.getElementById('side').classList.remove('show'); }
+  else if (el.dataset.thread) view.thread = el.dataset.thread;
+  else if (el.dataset.expand) view.expanded.has(el.dataset.expand) ? view.expanded.delete(el.dataset.expand) : view.expanded.add(el.dataset.expand);
+  else if (el.id === 'close') view.thread = null;
+  else if (el.id === 'menu') { document.getElementById('side').classList.toggle('show'); return; }
+  render();
+});
+
+function connect() {
+  const conn = document.getElementById('conn');
+  const source = new EventSource('/api/stream');
+  source.onmessage = e => { chat = JSON.parse(e.data); conn.textContent = 'ライブ'; conn.classList.add('live'); render(); };
+  source.onerror = () => { conn.textContent = '再接続中…'; conn.classList.remove('live'); };
+}
+connect();
+</script>
+</body>
+</html>
