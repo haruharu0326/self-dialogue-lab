@@ -4,7 +4,7 @@ import json
 import os
 import streamlit as st
 from .store import Store
-from .responder import MockResponder
+from .responder import MockResponder, ResponderError
 from .service import converse
 from .presentation import nature_stylesheet, page_hero, page_steps
 from .gemini import GeminiError
@@ -81,7 +81,7 @@ def _render():
         def attempt(fn, success=None):
             try:
                 fn()
-            except (ValueError, GeminiError) as e:
+            except (ValueError, GeminiError, ResponderError) as e:
                 st.error(str(e))
             else:
                 if success:

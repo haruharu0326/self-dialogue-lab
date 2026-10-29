@@ -33,7 +33,7 @@
 |---|---|---|---|
 |FR-018 対話|SCR-004・入力と履歴|App.tsx / Conversation.tsx / api.py POST /api/messages / service.converse_personal / gemini.py|AT-032,039,040|
 |FR-019 回答を覚える|本人発言の折りたたみ|Conversation.tsx / api.py approve, reject / Store.approve, reject|AT-033|
-|FR-020 参照の確認|返答の参照欄|Conversation.tsx / GeminiResponder / responses.refs|AT-034|
+|FR-020 参照の確認|返答の参照欄|Conversation.tsx / GeminiResponder / service._validate_reply / responses.refs|AT-034|
 |FR-021 記憶を見る・忘れる|サイドバーの記憶|Sidebar.tsx / api.py DELETE /api/memories / Store.current_records, delete_record|AT-035|
 |FR-022 会話を消す|サイドバーの削除|Sidebar.tsx / api.py DELETE /api/conversations / Store.clear_conversations|AT-036|
 |FR-023 接続と送信確認|接続案内・確認チェック|App.tsx / Sidebar.tsx / api.py / compose.yaml|AT-037,038,040|
@@ -48,7 +48,7 @@
 |NFR-007,008 秘密・外部送信|送信範囲案内・分析結果の送信境界|.gitignore / GeminiResponder / sentiment.py|AT-037,038,045,047|
 |NFR-010 削除の範囲|記憶と会話の別操作|records / 会話関連テーブル|AT-035,036|
 |NFR-011 分かりやすさ|SCR-004・見た目の方針・任意分析|frontend/src/styles.css / components|AT-032,043,045|
-|NFR-012,013 分離・交換性|対象外|frontend / api / service / store / GeminiResponder|AT-032〜034,039|
+|NFR-012,013 分離・交換性|対象外|frontend / api / service / store / responder.Responder（GeminiResponder・MockResponder）|AT-032〜034,039|
 
 音声入力の非保存・送信確認・エラー・下書き状態の境界はNFR-006〜010,012とAT-046にも対応します。モデルや設定の詳細は[内部設計の音声入力](design/internal-design.md#音声入力)、手順は[プロジェクトREADME](../README.md#音声入力任意)を参照してください。
 
