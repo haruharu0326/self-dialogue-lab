@@ -118,7 +118,7 @@ flowchart LR
 
 |場所|責務・主な依存|
 |---|---|
-|src/app.py|通常入口。uvicornでapi.create_appを起動（既定127.0.0.1:8501、アクセスログ無効）|
+|src/app.py|通常入口。uvicornでapi.create_appを起動（既定127.0.0.1:8501、アクセスログ無効）。起動時にブラウザで開くURLを1行表示（Host確認を通るURLだけを案内。待受が127.0.0.1・0.0.0.0・空なら127.0.0.1、::・::1・その他はlocalhost。SELF_DIALOGUE_PUBLIC_URLがあれば優先。表示に失敗しても起動は続ける）|
 |src/self_dialogue_lab/api.py|FastAPIのHTTP API。リクエストごとにStoreを開閉し、service/storeを呼ぶ。例外を安全な文言とHTTPコードへ変換。ビルド済み画面と風景画像を配信|
 |frontend/src/App.tsx|1画面チャット、送信確認（ページのメモリ）、通知、入力欄。APIの結果で画面状態を置き換える|
 |frontend/src/components/|Conversation（会話・回答の承認/拒否・トーン・参照）、Sidebar（接続案内・記憶・会話削除）、VoiceInput（録音・下書き）|
@@ -286,6 +286,7 @@ Dockerはnode:24-slimの段で `npm ci` と画面のビルドを行い、生成�
 |設定|用途|
 |---|---|
 |SELF_DIALOGUE_HOST / SELF_DIALOGUE_PORT|待受先。直接起動の既定は127.0.0.1:8501、Dockerは0.0.0.0:8501|
+|SELF_DIALOGUE_PUBLIC_URL|起動時に案内するブラウザ用URL。前後の空白を除き、空なら未設定扱いで待受先から組み立てる（127.0.0.1・0.0.0.0・空は127.0.0.1、それ以外はlocalhost）。Composeの既定はホスト側のhttp://127.0.0.1:8501/で、公開ポートを変えるときは両方を変える|
 
 ## 初期化と移行
 

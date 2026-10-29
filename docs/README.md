@@ -42,7 +42,7 @@
 |FR-027 トーンの任意送信|初期OFFチェック|App.tsx / api.ts / api.py / service.py / GeminiResponder|AT-047|
 |FR-025 文章トーン3分類|本人発言の任意操作|Conversation.tsx / api.py POST /api/exchanges/{id}/tone / sentiment.py / Dockerfile / compose.yaml|AT-045|
 |FR-026 音声入力|録音→文字起こし→確認編集→送信|App.tsx（送信の排他） / VoiceInput.tsx / recorder.ts / api.py POST /api/voice/transcribe / voice.py / Dockerfile / compose.yaml|AT-046|
-|NFR-001,002 実行環境・ローカル|起動・設定|Dockerfile / compose.yaml / app.py / api.pyのHost・Origin確認|AT-040|
+|NFR-001,002 実行環境・ローカル|起動・設定|Dockerfile / compose.yaml / app.py / api.pyのHost・Origin確認|AT-040 / tests/test_app_entry.py（起動時の案内URL）|
 |NFR-003 性能|通常操作|未測定|AT-041|
 |NFR-004,005 永続性・整合性|覚える・忘れる・削除|SQLite / Store.transaction|AT-033,035,036,042|
 |NFR-006,009 エラー・ログ|共通通知|gemini.py / api.py / app.py（アクセスログ無効）|AT-039|

@@ -13,6 +13,8 @@ services:
       GEMINI_TIMEOUT_SECONDS: ${GEMINI_TIMEOUT_SECONDS:-120}
       SENTIMENT_MODEL_PATH: ${SENTIMENT_MODEL_PATH:-}
       VOICE_MODEL_PATH: ${VOICE_MODEL_PATH:-}
+      # Shown at startup as the URL to open. If you change the host port in "ports", change this too.
+      SELF_DIALOGUE_PUBLIC_URL: ${SELF_DIALOGUE_PUBLIC_URL:-http://127.0.0.1:8501/}
     ports:
       - "127.0.0.1:8501:8501"
     volumes:
