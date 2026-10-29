@@ -39,7 +39,7 @@ def pytest_python():
 def main():
     sys.stdout.reconfigure(encoding='utf-8')  # Windowsの既定cp932では日本語が文字化けする
     sys.stderr.reconfigure(encoding='utf-8')
-    data = json.load(sys.stdin)
+    data = json.loads(sys.stdin.buffer.read().decode('utf-8'))  # stdin is UTF-8; Windows default cp932 breaks it
     tool_input = data.get('tool_input') or {}
     path = tool_input.get('file_path') or (data.get('tool_response') or {}).get('filePath') or ''
     if not is_doc(path):

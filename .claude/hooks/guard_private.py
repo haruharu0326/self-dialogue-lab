@@ -56,7 +56,7 @@ def reason_for(tool, tool_input):
 
 def main():
     sys.stdout.reconfigure(encoding='utf-8')  # Windowsの既定cp932では日本語の理由が文字化けする
-    data = json.load(sys.stdin)
+    data = json.loads(sys.stdin.buffer.read().decode('utf-8'))  # stdin is UTF-8; Windows default cp932 breaks it
     reason = reason_for(data.get('tool_name', ''), data.get('tool_input') or {})
     if reason:
         print(json.dumps({'hookSpecificOutput': {

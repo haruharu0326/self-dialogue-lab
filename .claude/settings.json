@@ -14,9 +14,31 @@
             "onFailure": "block"
           }
         ]
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/log_activity.py\"",
+            "timeout": 10,
+            "async": true
+          }
+        ]
       }
     ],
     "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/log_activity.py\"",
+            "timeout": 10,
+            "async": true
+          }
+        ]
+      },
       {
         "matcher": "Edit|Write",
         "hooks": [
@@ -28,6 +50,18 @@
           }
         ]
       }
+    ],
+    "SubagentStart": [
+      { "hooks": [ { "type": "command", "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/log_activity.py\"", "timeout": 10, "async": true } ] }
+    ],
+    "SubagentStop": [
+      { "hooks": [ { "type": "command", "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/log_activity.py\"", "timeout": 10, "async": true } ] }
+    ],
+    "UserPromptSubmit": [
+      { "hooks": [ { "type": "command", "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/log_activity.py\"", "timeout": 10, "async": true } ] }
+    ],
+    "Stop": [
+      { "hooks": [ { "type": "command", "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/log_activity.py\"", "timeout": 10, "async": true } ] }
     ]
   }
 }
