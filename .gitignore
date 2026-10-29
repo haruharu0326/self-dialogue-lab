@@ -39,3 +39,4 @@ node_modules/
 .eval-runs/
 src/self_dialogue_lab/static/
 .claude/activity/
+.claude/worktrees/

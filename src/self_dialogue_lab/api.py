@@ -14,6 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from .gemini import GeminiError, GeminiResponder
+from .responder import ResponderError
 from .sentiment import SentimentError, analyze
 from .service import converse_personal
 from .store import Store
@@ -112,6 +113,7 @@ def create_app(db_path=None, *, responder_factory=None, transcriber=None, analyz
         return _detail(400, str(error))
 
     @app.exception_handler(GeminiError)
+    @app.exception_handler(ResponderError)
     async def gemini_failed(request, error):
         return _detail(502, str(error))
 

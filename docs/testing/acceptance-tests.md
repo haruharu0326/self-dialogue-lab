@@ -22,7 +22,7 @@ FR-018,019に対応するAT-032,033の番号は維持。AT-001〜031は過去の
 |---|---|---|---|---|
 |AT-032 / FR-018,NFR-011,012|空の本人用DB、代替応答器、キーなしのUI|通常入口を開く→送信未確認で実行→確認後に相談|サンプルなし、シナリオ・評価・領域切替なし。未確認では呼出しなし、会話が継続。任意の文章分析はAT-045|境界は自動成功。画面の最新結果は実施記録を参照|
 |AT-033 / FR-019,NFR-004,005|発言「家族との時間を大切にしたい」とpending候補|保存前の次回入力→承認→接続を閉じ再接続→相談→同じ候補を再承認|承認前は長期記録なし、承認後だけ次回に含む、再接続でも保持、二重承認を拒否|自動成功。ボタン操作の目視は未実施|
-|AT-034 / FR-020,NFR-008,013|現在・過去・未選択の記録、代替API|送信データを検査→実在ID／架空IDを返す|現在の記憶だけを渡す。根拠の本文はDBの写し。未送信IDは保存しない|自動成功。文章内での実際の出典利用の品質は未評価|
+|AT-034 / FR-020,NFR-008,013|現在・過去・未選択の記録、代替API、契約どおりの代替応答器|送信データを検査→実在ID／架空IDを返す|現在の記憶だけを渡す。根拠の本文はDBの写し。未送信IDはアダプターとserviceの両方で拒否し保存しない|自動成功。文章内での実際の出典利用の品質は未評価|
 |AT-035 / FR-021,NFR-010|記憶、会話、過去の引用あり|拒否を確認→記憶を保存→忘れる→次回送信|拒否・削除したものは新しい長期根拠に入らない。会話と当時の写しは残る|自動成功。削除チェックの目視は未実施|
 |AT-036 / FR-022,NFR-004,010|会話、候補、承認済み記憶、旧評価あり|会話を削除→再送信|会話関連4テーブルは空、records/meta維持、次の会話を開始できる|自動成功。画面操作は未実施|
 |AT-037 / FR-023,NFR-008|空白発言、送信未確認、キーなし、無効モデル|各条件で送信を試す|不備は通信前に拒否、入力無効の案内、設定ありを疎通成功と表示しない|境界は自動成功。UIは未実施|
@@ -56,14 +56,14 @@ AT-045 / FR-025,NFR-007,008,011：保存済み本人発言について、モデ�
 
 |ケース|主なテスト（tests/配下）|
 |---|---|
-|032|test_simple_chat.py::test_personal_chat_without_consent_does_not_call_model / test_api.py::test_initial_state_is_empty_without_samples / test_consent_and_blank_input_are_checked_before_the_model / frontend App.test.tsx「shows only the conversation…」「requires consent…」|
-|033|test_simple_chat.py::test_answers_only_become_memory_after_user_confirmation / test_api.py::test_answer_becomes_memory_only_after_approval_and_only_once / frontend「remembers an edited answer…」|
-|034|test_gemini.py::test_only_selected_current_records_are_sent_and_refs_are_db_snapshots / test_invalid_remote_response_does_not_persist|
+|032|test_responder_contract.py::test_responders_match_the_contract_signature / test_strict_responder_runs_the_normal_path_and_saves_provider_and_model / test_mock_responder_accepts_the_normal_path_arguments / test_simple_chat.py::test_personal_chat_without_consent_does_not_call_model / test_api.py::test_initial_state_is_empty_without_samples / test_consent_and_blank_input_are_checked_before_the_model / frontend App.test.tsx「shows only the conversation…」「requires consent…」|
+|033|test_responder_contract.py::test_only_current_approved_records_are_supplied / test_simple_chat.py::test_answers_only_become_memory_after_user_confirmation / test_api.py::test_answer_becomes_memory_only_after_approval_and_only_once / frontend「remembers an edited answer…」|
+|034|test_gemini.py::test_only_selected_current_records_are_sent_and_refs_are_db_snapshots / test_invalid_remote_response_does_not_persist / test_responder_contract.py::test_unsupplied_references_are_rejected_before_saving / test_saved_references_are_db_copies_not_responder_output|
 |035|test_simple_chat.py::test_rejected_and_forgotten_answers_are_not_long_term_context / test_persistence.py::test_new_responses_exclude_changed_and_deleted_records / test_api.py::test_rejected_and_forgotten_answers_leave_long_term_context|
 |036|test_persistence.py::test_clear_conversations_preserves_approved_records / test_api.py::test_clearing_conversation_keeps_memories / frontend「forgets a memory and clears the conversation…」|
 |037|test_gemini.py::test_missing_key_consent_timeout_and_model_validation / test_simple_chat.py::test_personal_chat_without_consent_does_not_call_model|
 |038|test_gemini.py::test_gemini_conversation_context_and_source_separation / test_integrity.py::test_git_excludes_private_files_but_not_docs_or_samples|
-|039|test_gemini.py::test_http_errors_are_redacted_without_partial_save / test_invalid_remote_response_does_not_persist / test_integrity.py::test_approval_failure_rolls_back_record_and_historical_flag / test_api.py::test_api_failure_is_redacted_and_saves_nothing / test_storage_errors_use_safe_messages|
+|039|test_gemini.py::test_http_errors_are_redacted_without_partial_save / test_invalid_remote_response_does_not_persist / test_integrity.py::test_approval_failure_rolls_back_record_and_historical_flag / test_api.py::test_api_failure_is_redacted_and_saves_nothing / test_storage_errors_use_safe_messages / test_responder_contract.py::test_api_shows_saved_provider_and_rejects_fake_references|
 |042|test_persistence.py::test_records_conversation_and_feedback_survive_new_process / test_simple_chat.py::test_answers_only_become_memory_after_user_confirmation|
 |045|test_api.py::test_tone_is_manual_ephemeral_and_does_not_modify_storage / frontend「tone analysis」 / test_sentiment.py。実モデルのネットワーク無効化推論は実施記録を参照|
 |046|test_voice.py / test_api.py::test_voice_transcription_never_sends_or_stores / frontend「voice input」。実モデルと実マイクの確認は実施記録を参照|
@@ -81,14 +81,28 @@ AT-045 / FR-025,NFR-007,008,011：保存済み本人発言について、モデ�
 |FAT-002 / FFR-002|理由が曖昧な意見→具体例→質問を飛ばす・変える|発言に沿って原則1つの中心の問いを出す。答えを踏まえ、反復や動機の断定を避ける。本人が問いを変えられる|
 |FAT-003 / FFR-003|意見に対する別解・反例を提案→本人が却下|理由と仮説であることを示し、却下した提案を本人の経験・結論・記憶に混ぜない|
 |FAT-004 / FFR-004|仮まとめを修正・却下・保留→考えの変化を確認|本人確認前の長期保存なし。未決点を残し、誤入力修正と立場の変化を区別する|
-|FAT-005 / FFR-005|未承認・拒否・過去・削除済み記録を含む履歴から素材を選ぶ|自動収集しない。本人が用途を確認した素材だけを使い、過去の考えは当時の立場と明示。原文変更・削除後は再確認。外部送信範囲を確認できる|
+|FAT-005 / FFR-005|未承認・拒否・過去・削除済み記録を含む履歴から素材を選ぶ|自動収集しない。本人が用途を確認した素材だけを使い、過去の考えは当時の立場と明示。原文変更後は再確認。由来する会話の削除では素材も派生物として削除される。外部送信範囲を確認できる|
 |FAT-006 / FFR-006|留保と不足情報を含む素材→構成案→本文→部分却下|確認順序を守り、経験・出典・結論を創作しない。根拠をたどれ、未決点を断定へ変えない。対話に戻れ、本人の記憶を自動更新しない|
 |FAT-007 / FFR-007|内部メモや個人情報を含む下書きを取り出す|選んだ本文の範囲をプレビュー・確認でき、内部情報を自動混入させない。noteの認証・投稿・公開予約は呼ばない|
-|FAT-008 / FFR-008|本文の改稿→原文削除→再生成→下書き削除|版と時点を区別し、削除済み素材を新たに使わない。残る本文・写し・書き出しと削除範囲を説明し、長期記憶との削除を混同しない|
+|FAT-008 / FFR-008|本文の改稿→再生成→下書き削除→会話削除（複数の会話から作った下書きの扱いはOD-007で決める）|版と時点を区別する。会話削除で由来する素材・下書きも消え、削除済み素材を新たに使わない。クリップボードへコピー済みの文章は残ることと削除範囲を説明し、長期記憶との削除を混同しない|
+
+2026-10-29の[方針決定](../requirements/thinking-and-writing.md#方針決定2026-10-29)に伴い、実装時に次の観点を具体化します（すべて未実装・未実施）。
+
+- AT-048（予約）：[FR-028](../requirements/functional-requirements.md#fr-028-応答モードを選ぶ未実装)の応答モード。既定が固定応答で外部送信しないこと、全画面の「モック・固定応答」表示、明示操作でのみモード変更、失敗時に自動切替しないこと。以降のAT番号は実装ブランチごとに採番し、旧番号を再利用しない。
+- FAT-002,003,004,006：固定応答モードでは型の選択・発言の貼り付けまでで、理解・生成したように見せないこと（「入力の内容は理解していません」等の明示）。生成はGemini有効時のみ。
+- FAT-001（問いの文をGeminiへ送る場合）,002,003,004,005,006：Geminiへ送る前に、現行の送信同意とは別に、操作ごとに送る内容を示して確認すること。固定応答モードでは送信しないこと。
+- FAT-001,004,005,006,008：会話削除で派生物も削除され、確認画面が消えるものと残るもの（承認済みの長期記録など）を説明すること。長期記録は会話削除で消えないこと。
+- FAT-007：クリップボードへの本文のMarkdownコピーのみで、ファイルを作らないこと（プレーンテキストは未決の提案）。
+
+どのモードでも、自動テストの成功を対話品質や思考深化の検証とは表現しません。
 
 品質評価では、本人が理由や前提を説明できるか、別の見方を検討できるか、未決点や次の問いを持てるか、文章が本人の意図に合うかを確認します。質問数・文字数・トーン分類・生成物の長さだけで思考深化を合格判定しません。
 
 ## 実施記録
+
+### 応答器の契約（2026-10-29）
+
+refactor/responder-contractで[応答器の契約](../design/internal-design.md#応答器の契約)を定義（NFR-013、AT-032〜034,039）。製品FR/NFR/ATの追加はなく、通常画面の既定応答器（GeminiResponder）も変更していません。Windows / Python 3.13.7でpytest 160成功・7スキップ。スキップ7件はエージェント環境にStreamlit（検証用画面の任意依存）が未導入のためで、lab_ui.pyの例外捕捉の変更は構文確認だけです。既存の代替応答器2件（test_api.py、test_simple_chat.py）にprovider属性を追加しました。serviceの参照ID検証を外すとtests/test_responder_contract.pyの8件が失敗することも確認しました。レビュー対応で、provider・modelの空値、interpretationの空白のみ、任意例外での非保存（APIは500）のテストを追加し、画面状態のproviderを従来どおりgemini/mockの2値に戻しました。再実行はpytest 172成功・7スキップ（理由は同じ）。代替応答器のテスト成功は契約と保存・参照境界の確認であり、実モデルの対話品質の評価ではありません。Vitest・起動確認・実Gemini通信は本記録では未実施です。
 
 ### 通常画面の見た目「藍の帳面」（2026-10-25）
 

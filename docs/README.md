@@ -24,8 +24,9 @@
 開発環境の改善は[開発ハーネスの現状と導入案](development/harness-plan.md)を参照してください。製品機能とは分けて、現状の不足・規約との不整合・検証結果・導入順を記載しています。
 
 開発の分担には[開発用サブエージェント](development/subagents.md)を使えます。計画・実装・テスト確認・レビュー・文書整合の役割と標準の流れを記載しています。
+開発用の作業記録hookと開発チャット（記録する内容・しない内容、起動、記録の止め方）は[作業記録と開発チャット](development/subagents.md#作業記録と開発チャット)を参照してください。
 
-次回対応は[mainレビューの引き継ぎ](development/harness-plan.md#次回対応への引き継ぎ2026-10-25-mainレビュー)を参照してください。送信の排他制御（順序2）は対応済みです。方針の衝突、Responder契約、文書更新、レビュー範囲の整理を未対応事項として記録しています。
+次回対応は[mainレビューの引き継ぎ](development/harness-plan.md#次回対応への引き継ぎ2026-10-25-mainレビュー)を参照してください。方針の衝突は2026-10-29に決定済み（実装待ち）、送信の排他制御（A1）とResponder契約（A2）は対応済みです。文書更新、レビュー範囲の整理を未対応事項として記録しています。
 
 現行FR-018,019とAT-032,033の番号は維持しています。新規の番号を追加し、旧番号を別機能へ再利用しません。
 
@@ -33,7 +34,7 @@
 |---|---|---|---|
 |FR-018 対話|SCR-004・入力と履歴|App.tsx / Conversation.tsx / api.py POST /api/messages / service.converse_personal / gemini.py|AT-032,039,040|
 |FR-019 回答を覚える|本人発言の折りたたみ|Conversation.tsx / api.py approve, reject / Store.approve, reject|AT-033|
-|FR-020 参照の確認|返答の参照欄|Conversation.tsx / GeminiResponder / responses.refs|AT-034|
+|FR-020 参照の確認|返答の参照欄|Conversation.tsx / GeminiResponder / service._validate_reply / responses.refs|AT-034|
 |FR-021 記憶を見る・忘れる|サイドバーの記憶|Sidebar.tsx / api.py DELETE /api/memories / Store.current_records, delete_record|AT-035|
 |FR-022 会話を消す|サイドバーの削除|Sidebar.tsx / api.py DELETE /api/conversations / Store.clear_conversations|AT-036|
 |FR-023 接続と送信確認|接続案内・確認チェック|App.tsx / Sidebar.tsx / api.py / compose.yaml|AT-037,038,040|
@@ -48,7 +49,7 @@
 |NFR-007,008 秘密・外部送信|送信範囲案内・分析結果の送信境界|.gitignore / GeminiResponder / sentiment.py|AT-037,038,045,047|
 |NFR-010 削除の範囲|記憶と会話の別操作|records / 会話関連テーブル|AT-035,036|
 |NFR-011 分かりやすさ|SCR-004・見た目の方針・任意分析|frontend/src/styles.css / components|AT-032,043,045|
-|NFR-012,013 分離・交換性|対象外|frontend / api / service / store / GeminiResponder|AT-032〜034,039|
+|NFR-012,013 分離・交換性|対象外|frontend / api / service / store / responder.Responder（GeminiResponder・MockResponder）|AT-032〜034,039|
 
 音声入力の非保存・送信確認・エラー・下書き状態の境界はNFR-006〜010,012とAT-046にも対応します。モデルや設定の詳細は[内部設計の音声入力](design/internal-design.md#音声入力)、手順は[プロジェクトREADME](../README.md#音声入力任意)を参照してください。
 
@@ -66,8 +67,19 @@
 |FFR-004 / FNFR-001,002,004|本人確認による仮まとめ・未決点|FAT-004|未設計・未実装・未実施|
 |FFR-005 / FNFR-002〜004|記事素材の選択・確認|FAT-005|未設計・未実装・未実施|
 |FFR-006 / FNFR-001〜005|構成案・下書きの確認編集|FAT-006|未設計・未実装・未実施|
-|FFR-007 / FNFR-002,003,005|公開前確認・手動転記や書き出し|FAT-007|未設計・未実装・未実施|
+|FFR-007 / FNFR-002,003,005|公開前確認・クリップボードへのコピー|FAT-007|未設計・未実装・未実施|
 |FFR-008 / FNFR-002,004|版・時点・削除範囲|FAT-008|未設計・未実装・未実施|
+
+### 方針決定と番号の対応（2026-10-29、未実装）
+
+応答モード（[FR-028](requirements/functional-requirements.md#fr-028-応答モードを選ぶ未実装)、AT-048予約）、会話削除の範囲、外部送信の確認、取り出し（クリップボードのみ）、固定応答モードでの扱いの詳細は[将来要件の方針決定](requirements/thinking-and-writing.md#方針決定2026-10-29)に集約しています。実装順は、A2（Responder契約）→A1（送信排他）（呼び名は[引き継ぎ表](development/harness-plan.md#次回対応への引き継ぎ2026-10-25-mainレビュー)の行3・行2）→responder-mode→FFR-001→002→003→004→005→006→008→007です。新しいFR/ATは、FR-028以降・AT-048以降を実装ブランチごとに採番し、下の「方針決定と番号の対応」表に追記します。旧番号を別機能へ再利用しません。
+
+|予定|ブランチ・対象|FR/AT|状態|
+|---|---|---|---|
+|A2 Responder契約|PR #8 `refactor/responder-contract`|既存NFR-013 / AT-032〜034,039|対応済み|
+|A1 送信排他|PR #6 `fix/send-mutual-exclusion`|既存FR-026 / AT-046|対応済み|
+|responder-mode|`feature/responder-mode`|FR-028 / AT-048（予約）|未実装|
+|FFR-001〜006,008,007|各実装ブランチ|FR-029以降・AT-049以降の予定（割当ては各ブランチで確定）|未設計・未実装|
 
 ## 通常製品と検証用機能
 
@@ -83,7 +95,7 @@
 |OD-004|実API・Docker・ブラウザ・他OSの動作確認|[実施記録](testing/acceptance-tests.md#実施記録)|
 |OD-005|通常画面での記憶の訂正・変化の扱い|[対象範囲](requirements/requirements-definition.md#対象範囲)|
 |OD-006|日本語トーン分類の精度評価・モデル再選定|[将来拡張と未決事項](requirements/requirements-definition.md#将来拡張と未決事項)|
-|OD-007|思考テーマ、素材確認、文書の版・保持期間・削除関係|[将来要件の未決事項](requirements/thinking-and-writing.md#未決事項)|
-|OD-008|note向けの出力形式・出典・公開前確認・評価方法|[将来要件の未決事項](requirements/thinking-and-writing.md#未決事項)|
+|OD-007|思考テーマ、素材確認、版・保持期間、記憶削除と派生物の関係（会話削除時の派生物削除は決定済み。複数会話由来の下書きの一部削除は未決）|[将来要件の未決事項](requirements/thinking-and-writing.md#未決事項)|
+|OD-008|出典・公開前確認・評価方法（クリップボードへのMarkdownコピーは決定済み。プレーンテキストは未決の提案）|[将来要件の未決事項](requirements/thinking-and-writing.md#未決事項)|
 
 アーキテクチャ図は[内部設計・アーキテクチャ図（現行実装）](design/internal-design.md#アーキテクチャ図現行実装)を参照してください。通常構成、対話と承認の流れ、開発・検証用の構成を掲載しています。FR/NFR/ATとの対応は上の対応表を参照してください。

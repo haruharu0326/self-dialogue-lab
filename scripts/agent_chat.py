@@ -21,6 +21,8 @@ MAIN = 'main'
 AGENT_TOOLS = {'Agent', 'Task'}
 STALE_SECONDS = 15 * 60
 FEED = 300
+STOP_HINT = ('サーバーを止めても記録は続きます（記録するのはlog_activity.py）。'
+             '記録を止めるには .claude/activity/ を削除してください（これまでの記録も消えます）。')
 LABELS = {
     MAIN: 'リーダー', 'planner': '計画', 'be-engineer': 'バックエンド', 'fe-engineer': 'フロント',
     'reviewer': 'レビュー', 'tester': 'テスト', 'refactorer': 'リファクタ', 'doc-keeper': '文書',
@@ -194,6 +196,7 @@ def main(argv=None):
     server.daemon_threads = True
     url = f'http://127.0.0.1:{args.port}/'
     print(f'開発チャット: {url}  （Ctrl+Cで停止）', flush=True)
+    print(STOP_HINT, flush=True)
     if args.open:
         webbrowser.open(url)
     try:

@@ -2,11 +2,13 @@
 
 scripts/agent_chat.py を一度起動して .claude/activity/ ができるまでは何もしない。
 通常のツールは名前と対象（ファイル名・コマンド先頭）だけを残し、ファイルの中身は残さない。
+コマンド・URL・検索の要約は、秘密らしい値を伏せてから切り詰める。
 Agentツール（サブエージェント呼び出し）だけは、依頼文と返ってきた報告を上限付きで残す。
 ユーザーの入力文は記録しない。どんな失敗でも作業を止めないよう、常に終了コード0で終わる。
 """
 import json
 import os
+import re
 import sys
 import time
 from pathlib import Path
@@ -19,6 +21,37 @@ PROMPT_CHARS = 4000
 REPORT_CHARS = 8000
 EVENTS = {'PreToolUse', 'PostToolUse', 'SubagentStart', 'SubagentStop', 'Stop', 'UserPromptSubmit'}
 AGENT_TOOLS = {'Agent', 'Task'}
+# 伏せる前に切る長さ。要約は最終的に60字以下なので情報は減らず、正規表現の計算量も抑えられる
+REDACT_CHARS = 300
+# 要約に入りうる秘密を伏せる（パターン, 置換）。誤検出で無害な値が伏せられるのは許容する
+# 値は閉じていない引用符や連結（abc"def ghi"）もまとめて1つとして扱い、断片を残さない
+VALUE = r'''(?:'[^']*'?|"[^"]*"?|[^\s'";|&)}])+'''
+SECRET_OPTION = r'(?:token|key|secret|password|passwd|pwd|auth|credential)'
+SECRET_HEADER = r'(?:api[-_]?key|token|secret|password|passwd|auth|credential|cookie)'
+REDACTIONS = [
+    (re.compile(r'''(\w+://)[^/\s?#'"]+@'''), r'\1***@'),
+    (re.compile(r'''(\w+://[^\s?#'"]*)([?#])[^\s'"]*'''), r'\1\2***'),
+    (re.compile(r'(?i)(?<![\w-])(?=\w)([\w-]*' + SECRET_HEADER + r'[\w-]*\s*:\s*)[^\'"\r\n]+'), r'\1***'),
+    # 引用符付きのキー（{"token": …}、@{'X-Api-Key'=…}、['TOKEN']=…）
+    (re.compile(r'''(?i)((['"])[\w-]*''' + SECRET_OPTION + r'''[\w-]*\2\]?\s*[:=]\s*)''' + VALUE), r'\1***'),
+    (re.compile(r'(?i)\b(Bearer\s+)[^\s\'"]+'), r'\1***'),
+    (re.compile(r'(?i)(\$env:\w+\s*=\s*)' + VALUE), r'\1***'),
+    (re.compile(r'(?i)(?<![\w$-])(\$?[\w-]*' + SECRET_OPTION + r'[\w-]*\s*=\s*)' + VALUE), r'\1***'),
+    (re.compile(r'(?:^|(?<=[\s;&|(]))([A-Za-z_]\w*=)' + VALUE), r'\1***'),
+    (re.compile(r'(?i)(?<!\S)(--?[\w-]*' + SECRET_OPTION + r'[\w-]*)(=|:|\s+)' + VALUE), r'\1\2***'),
+]
+
+
+def redact(text):
+    """コマンドやURLの要約から、環境変数の値・認証ヘッダー・URLの認証情報やクエリ等を伏せる。"""
+    for pattern, replacement in REDACTIONS:
+        text = pattern.sub(replacement, text)
+    return text
+
+
+def brief(text, size):
+    """1行にまとめ、先に長さを抑えてから秘密を伏せ、最後に切り詰める。"""
+    return clip(redact(' '.join(str(text).split())[:REDACT_CHARS]), size)
 
 
 def clip(text, size, oneline=True):
@@ -34,15 +67,15 @@ def summarize(tool, tool_input):
         return Path(str(path).replace('\\', '/')).name
     if tool in ('Bash', 'PowerShell'):
         command = str(tool_input.get('command') or '')
-        return clip(command.splitlines()[0] if command else '', 60)
+        return brief(command.splitlines()[0] if command else '', 60)
     if tool in ('Grep', 'Glob'):
-        return clip(tool_input.get('pattern', ''), 40)
+        return brief(tool_input.get('pattern', ''), 40)
     if tool in AGENT_TOOLS:
         return clip(tool_input.get('description', ''), 60)
     if tool == 'WebSearch':
-        return clip(tool_input.get('query', ''), 40)
+        return brief(tool_input.get('query', ''), 40)
     if tool == 'WebFetch':
-        return clip(tool_input.get('url', ''), 60)
+        return brief(tool_input.get('url', ''), 60)
     return ''
 
 

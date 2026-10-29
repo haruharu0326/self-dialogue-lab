@@ -4,13 +4,13 @@
 
 ## 次回対応への引き継ぎ（2026-10-25 mainレビュー）
 
-対象はmainの`3fb1ac9`。レビュー開始時の作業ツリーはクリーンでした。以下は未対応の指摘・対応案であり、製品仕様の変更決定や修正完了を意味しません。本書の後続にある「多数の未コミット変更」「対応表に旧ファイルが残る」等は過去の調査時点の記録で、今回のmainの状態とは区別します。
+対象はmainの`3fb1ac9`。レビュー開始時の作業ツリーはクリーンでした。行1は2026-10-29に方針決定済み、行2は対応済み（PR #6）、行3は対応済み（PR #8）です。表の順序は2026-10-25時点の起票順で、実装順（A2→A1）ではありません。以下は指摘・対応案であり、製品仕様の変更決定や修正完了を意味しません。本書の後続にある「多数の未コミット変更」「対応表に旧ファイルが残る」等は過去の調査時点の記録で、今回のmainの状態とは区別します。
 
 |順序・状態|次回の対応内容|根拠・対象|完了条件・確認方法|
 |---|---|---|---|
-|1・方針未決|初版をモックとする開発方針と、Gemini実通信を前提とする現行製品仕様の衝突を解消する|[AGENTS.md](../../AGENTS.md)、[現行機能要件](../requirements/functional-requirements.md)、[内部設計](../design/internal-design.md)、api.py。全画面のモック明示・実API対象外という指示と通常実装が一致しない|ユーザーと採用方針を確定し、文書初稿を先に更新する。その後、規約・要件・設計・実装・受入条件を同じ方針へ揃える。確定前に一方を暗黙に正本として実装を変更しない|
-|2・対応済み|手入力と音声入力の送信を共通で排他制御する|対応前は、frontend/src/App.tsxのVoiceInputへのenabledはbusyを含まず、共通sendにも実行中チェックがない。[外部設計](../design/external-design.md)の「処理中は操作ボタン無効」、FR-026 / AT-046|手入力の応答待ちに音声送信できないこと、逆方向でも追加送信できないことを遅延APIのVitestで確認する。完了・失敗後の再送信、下書き保持も確認する。対応: App.tsxのrunにbusyRefによる実行中ガードを追加し、VoiceInputの送信をbusy中は無効化。frontend/src/App.test.tsx「send mutual exclusion」で手入力⇄音声の交差、承認・忘れる・会話削除、二重発火、完了・失敗後の再送信と下書き保持を確認（[AT-046](../testing/acceptance-tests.md)）。実ブラウザ確認は未実施|
-|3・未対応|通常応答器の交換に必要なResponder契約を定義する|src/self_dialogue_lab/responder.pyのProtocolに対し、service.pyはhistory・demo・任意のtone_contextとmodel属性を要求する。NFR-013 / AT-032〜034,039|通常の注入境界と契約を揃え、契約に従う代替応答器で対話・保存・参照境界を検証する。検証用MockResponderとの互換性も確認する|
+|1・方針決定済み（2026-10-29）・実装待ち|初版をモックとする開発方針と、Gemini実通信を前提とする現行製品仕様の衝突を解消する|決定内容：既定は固定応答（モック）、Geminiは本人が明示的に有効化したときだけ使う二重モード。要件は[FR-028](../requirements/functional-requirements.md#fr-028-応答モードを選ぶ未実装)、関連する方針は[将来要件の方針決定](../requirements/thinking-and-writing.md#方針決定2026-10-29)、設計は[内部設計](../design/internal-design.md#応答モード今後実装未実装)・[外部設計](../design/external-design.md#応答モード今後実装未実装)。規約は[AGENTS.md](../../AGENTS.md)を改訂済み|文書初稿は更新済み。実装（想定ブランチ`feature/responder-mode`、A2・A1の後）と、その後の要件・設計・受入条件（AT-048予約）の更新は未了。実装までは現行のGemini対話が動作仕様|
+|2・対応済み（PR #6 fix/send-mutual-exclusion）|A1 送信排他：手入力と音声入力の送信を共通で排他制御する|対応前は、frontend/src/App.tsxのVoiceInputへのenabledはbusyを含まず、共通sendにも実行中チェックがない。[外部設計](../design/external-design.md)の「処理中は操作ボタン無効」、FR-026 / AT-046|手入力の応答待ちに音声送信できないこと、逆方向でも追加送信できないことを遅延APIのVitestで確認する。完了・失敗後の再送信、下書き保持も確認する。対応: App.tsxのrunにbusyRefによる実行中ガードを追加し、VoiceInputの送信をbusy中は無効化。frontend/src/App.test.tsx「send mutual exclusion」で手入力⇄音声の交差、承認・忘れる・会話削除、二重発火、完了・失敗後の再送信と下書き保持を確認（[AT-046](../testing/acceptance-tests.md)）。実ブラウザ確認は未実施|
+|3・対応済み（PR #8 refactor/responder-contract）|A2 Responder契約：通常応答器の交換に必要なResponder契約を定義する|src/self_dialogue_lab/responder.pyのProtocolに対し、service.pyはhistory・demo・任意のtone_contextとmodel属性を要求する。NFR-013 / AT-032〜034,039|通常の注入境界と契約を揃え、契約に従う代替応答器で対話・保存・参照境界を検証する。検証用MockResponderとの互換性も確認する。対応：[内部設計の応答器の契約](../design/internal-design.md#応答器の契約)、tests/test_responder_contract.py。既定の応答器はこのブランチでは変えていない。既定の切り替えは2026-10-29の方針決定に基づきFR-028／feature/responder-modeで行う|
 |4・未対応|文書の現状説明を更新し、過去の調査記録と分ける|本書の現状表・未コミット変更の記述、内部設計のsentiment.py責務表にある「対話への送信なし」。現在のdocs/README.md対応表はReact/APIへ更新済み|現状表をmainに合わせ、過去記録には対象時点を明示する。トーンの表示用分析とFR-027の任意送信を区別し、詳細は担当節へリンクする|
 |5・用途の整理が必要|差分レビューとmain全体の設計整合レビューの実行方法を区別する|scripts/review.pyはchanges内のファイルだけを指摘対象にする。クリーンなmainの全体レビューを既定のHEAD比較では実施できない|差分レビューの比較元指定手順と、全体照合の手順・結果記録先を明記する。全体レビューの自動化は未決であり、既存ハーネスで対応済みとは扱わない|
 
@@ -89,7 +89,7 @@ pytestのJUnit XMLとVitestのJSONから件数を集計し、レポートが欠�
 
 ## 最初に解決する仕様の不整合
 
-AGENTS.mdは全画面のモック・固定応答表示と実LLM/APIの初版対象外を指示しています。一方、README、要件定義書、api.pyはGeminiによる実対話を現在仕様として扱っています。今回の調査ではどちらも書き換えていません。自動レビューが一方を暗黙に正本として実装を戻すことは避け、衝突を報告し、製品として採用する方針をユーザーと確定してから規約・関連文書を揃えます。確定までの作業は現在のAGENTS.mdに従います。
+（過去の調査時点の記録）AGENTS.mdは全画面のモック・固定応答表示と実LLM/APIの初版対象外を指示し、README、要件定義書、api.pyはGeminiによる実対話を現在仕様として扱っていました。2026-10-29に、固定応答を既定、Geminiを本人の明示有効化時のみとする二重モードに決定し、AGENTS.mdと関連文書の初稿を更新しました。決定内容は[FR-028](../requirements/functional-requirements.md#fr-028-応答モードを選ぶ未実装)を参照してください。実装は未了です。
 
 ## 導入する最小の流れ（提案）
 
