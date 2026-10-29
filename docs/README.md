@@ -26,7 +26,7 @@
 開発の分担には[開発用サブエージェント](development/subagents.md)を使えます。計画・実装・テスト確認・レビュー・文書整合の役割と標準の流れを記載しています。
 開発用の作業記録hookと開発チャット（記録する内容・しない内容、起動、記録の止め方）は[作業記録と開発チャット](development/subagents.md#作業記録と開発チャット)を参照してください。
 
-次回対応は[mainレビューの引き継ぎ](development/harness-plan.md#次回対応への引き継ぎ2026-10-25-mainレビュー)を参照してください。方針の衝突（2026-10-29に決定済み・実装待ち）、送信の排他制御、Responder契約、文書更新、レビュー範囲の整理を未対応事項として記録しています。
+次回対応は[mainレビューの引き継ぎ](development/harness-plan.md#次回対応への引き継ぎ2026-10-25-mainレビュー)を参照してください。方針の衝突は2026-10-29に決定済み（実装待ち）、送信の排他制御（A1）とResponder契約（A2）は対応済みです。文書更新、レビュー範囲の整理を未対応事項として記録しています。
 
 現行FR-018,019とAT-032,033の番号は維持しています。新規の番号を追加し、旧番号を別機能へ再利用しません。
 
@@ -41,7 +41,7 @@
 |FR-024 エラー通知|エラー表示|GeminiError / api.pyの例外ハンドラー / api.ts / scripts/check_gemini.py|AT-037,039,044|
 |FR-027 トーンの任意送信|初期OFFチェック|App.tsx / api.ts / api.py / service.py / GeminiResponder|AT-047|
 |FR-025 文章トーン3分類|本人発言の任意操作|Conversation.tsx / api.py POST /api/exchanges/{id}/tone / sentiment.py / Dockerfile / compose.yaml|AT-045|
-|FR-026 音声入力|録音→文字起こし→確認編集→送信|VoiceInput.tsx / recorder.ts / api.py POST /api/voice/transcribe / voice.py / Dockerfile / compose.yaml|AT-046|
+|FR-026 音声入力|録音→文字起こし→確認編集→送信|App.tsx（送信の排他） / VoiceInput.tsx / recorder.ts / api.py POST /api/voice/transcribe / voice.py / Dockerfile / compose.yaml|AT-046|
 |NFR-001,002 実行環境・ローカル|起動・設定|Dockerfile / compose.yaml / app.py / api.pyのHost・Origin確認|AT-040|
 |NFR-003 性能|通常操作|未測定|AT-041|
 |NFR-004,005 永続性・整合性|覚える・忘れる・削除|SQLite / Store.transaction|AT-033,035,036,042|
@@ -77,7 +77,7 @@
 |予定|ブランチ・対象|FR/AT|状態|
 |---|---|---|---|
 |A2 Responder契約|PR #8 `refactor/responder-contract`|既存NFR-013 / AT-032〜034,039|対応済み|
-|A1 送信排他|PR #6 `fix/send-mutual-exclusion`|既存FR-026 / AT-046|対応中|
+|A1 送信排他|PR #6 `fix/send-mutual-exclusion`|既存FR-026 / AT-046|対応済み|
 |responder-mode|`feature/responder-mode`|FR-028 / AT-048（予約）|未実装|
 |FFR-001〜006,008,007|各実装ブランチ|FR-029以降・AT-049以降の予定（割当ては各ブランチで確定）|未設計・未実装|
 
