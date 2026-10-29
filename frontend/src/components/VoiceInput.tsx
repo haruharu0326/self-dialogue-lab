@@ -20,6 +20,7 @@ export function VoiceInput({ configured, enabled, busy, recorder, transcribe, on
   const [draft, setDraft] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [working, setWorking] = useState<'transcribe' | 'send' | null>(null)
+  const sendingRef = useRef(false)
   const stopRef = useRef<() => void>(() => {})
   const url = useObjectUrl(audio)
 
@@ -76,8 +77,12 @@ export function VoiceInput({ configured, enabled, busy, recorder, transcribe, on
   }
 
   const send = async () => {
+    // Same-frame double click: the second call must not touch `working` of the first.
+    if (sendingRef.current) return
+    sendingRef.current = true
     setWorking('send')
     const sent = await onSend(draft.trim())
+    sendingRef.current = false
     setWorking(null)
     // A failed send keeps the draft so nothing typed is lost; success is reset by the parent.
     if (sent) reset()
@@ -117,7 +122,7 @@ export function VoiceInput({ configured, enabled, busy, recorder, transcribe, on
               <textarea value={draft} rows={3} onChange={(event) => setDraft(event.target.value)} />
             </label>
             {!enabled && <p className="note">送信にはGeminiの接続設定と、会話の送信確認が必要です。</p>}
-            {enabled && busy && working !== 'send' && <p className="note">応答を待っています。完了するまで送信できません。</p>}
+            {enabled && busy && working !== 'send' && <p className="note">処理中です。完了するまで送信できません。</p>}
             <div className="actions">
               <button type="button" className="button button-primary" disabled={!enabled || busy || !draft.trim() || working !== null} onClick={send}>
                 この文章を送信
