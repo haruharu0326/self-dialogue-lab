@@ -76,12 +76,12 @@
     - 名前に`token`・`key`・`secret`・`password`・`passwd`・`pwd`・`auth`・`credential`を含むオプションの値（`=`・空白・`:`区切り。`-Password:値`も）
     - 引用符付きのキーの値（`@{'X-Api-Key'='…'}`、JSON本文`{"token":"…"}`、`os.environ['TOKEN']=…`の添字形式も）。キー名の語はオプションと同じ`token`・`key`・`secret`・`password`・`passwd`・`pwd`・`auth`・`credential`
     - 閉じていない引用符や連結した値は、まとめて伏せます。
-  - 伏せすぎる例（許容）: `ssh://git@host/x`のユーザー名、`--author=…`、`tokenizer: x`、`$monkey = 1`のように、該当語を含むだけのもの。外側の引用符の中の代入では、閉じ引用符まで`***`に含まれることがある（`python -c "os.environ['TOKEN']='abc'"`）。
+  - 伏せすぎる例（許容）: `ssh://git@host/x`のユーザー名、`--author=…`、`tokenizer: x`、`$monkey = 1`のように、該当語を含むだけのもの。外側の引用符の中の代入では、閉じ引用符とそれ以降（次の`"`まで、なければ行末まで）が`***`に含まれることがある（`python -c "os.environ['TOKEN']='abc'" && run`の` && run`も消える）。
   - 拾えないもの（パターン照合による best effort であり、「伏せるから安全」ではありません。コマンドに秘密を直接書かない運用が前提です）:
     - 区切りなしの形（`mysql -pSecret123`）、メソッド引数（`[Environment]::SetEnvironmentVariable("KEY","v")`）、`Set-Item Env:NAME 値`
     - 名前が秘密らしくない変数・引数・位置引数（`$x = 'sk-abc'`、`python app.py sk-abc`、curlの`-u user:pass`）、名前が秘密らしくないヘッダー（`X-Custom: abc`）
     - 引用符なしの値は空白と`;`・`|`・`&`・`)`・`}`で止まり、それ以降は伏せない（`TOKEN=ab|cd`の`cd`）
-    - 引用符で囲まれていても、名前に該当語を含まないキー（`{"session": "abc"}`）
+    - 引用符で囲まれていても、名前に該当語を含まないキー（`{"session": "abc"}`）。エスケープした引用符のキー（`"{\"token\":\"abc\"}"`）
     - URLのパスに埋め込まれた秘密、`://`のない形式
     - 2行目以降（そもそも記録しません）
     - Agentのdescription、依頼文、報告本文（伏せ処理を掛けません）
