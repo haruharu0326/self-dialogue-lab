@@ -22,6 +22,8 @@ export default function App({ api = defaultApi, recorder = browserRecorder }: Pr
   const [text, setText] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
   const end = useRef<HTMLDivElement>(null)
+  // State updates are async, so a ref guards against two actions starting in the same frame.
+  const busyRef = useRef(false)
 
   const load = () => {
     setLoadError(null)
@@ -37,6 +39,9 @@ export default function App({ api = defaultApi, recorder = browserRecorder }: Pr
   }, [state?.exchanges.length, pending])
 
   const run = async (action: () => Promise<AppState>, success?: string) => {
+    // One request at a time for typed/voice sends, approve/reject, forget and clear.
+    if (busyRef.current) return false
+    busyRef.current = true
     setBusy(true)
     setError(null)
     setNotice(null)
@@ -52,18 +57,20 @@ export default function App({ api = defaultApi, recorder = browserRecorder }: Pr
       setError(messageOf(caught))
       return false
     } finally {
+      busyRef.current = false
       setBusy(false)
     }
   }
 
   const send = (message: string) => {
+    if (busyRef.current) return Promise.resolve(false)
     setPending(message)
     return run(() => includeTone ? api.send(message, consent, true) : api.send(message, consent))
   }
 
   const submit = async (event?: FormEvent) => {
     event?.preventDefault()
-    if (busy || !text.trim()) return
+    if (busyRef.current || !text.trim()) return
     if (await send(text)) setText('')
   }
 
@@ -154,7 +161,7 @@ export default function App({ api = defaultApi, recorder = browserRecorder }: Pr
             {notice && <p className="alert alert-success">{notice}</p>}
             {error && <p className="alert alert-error" role="alert">{error}</p>}
           </div>
-          <VoiceInput key={epoch} configured={state.voiceConfigured} enabled={canSend} recorder={recorder} transcribe={api.transcribe} onSend={send} />
+          <VoiceInput key={epoch} configured={state.voiceConfigured} enabled={canSend} busy={busy} recorder={recorder} transcribe={api.transcribe} onSend={send} />
           <label className="consent">
             <input type="checkbox" checked={includeTone} disabled={!state.toneConfigured || busy} onChange={(event) => setIncludeTone(event.target.checked)} />
             <span>送信する文章のトーンもGeminiへ渡す</span>

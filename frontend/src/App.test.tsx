@@ -1,5 +1,6 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { act } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import App from './App'
 import { ApiError, type Api } from './api'
@@ -304,5 +305,109 @@ describe('voice input', () => {
     const alert = await screen.findByText(/文字起こしに失敗しました/)
     expect(within(alert.closest('details')!).getByText(/文字起こしに失敗しました/)).toBeInTheDocument()
     expect(api.send).not.toHaveBeenCalled()
+  })
+})
+
+describe('send mutual exclusion (typed and voice)', () => {
+  const wav = new Blob(['wav'], { type: 'audio/wav' })
+  const recorder = (): Recorder => vi.fn(async () => ({ stop: async () => wav, cancel: vi.fn() }))
+  const deferred = () => {
+    let resolve!: (state: AppState) => void
+    let reject!: (error: Error) => void
+    const promise = new Promise<AppState>((res, rej) => { resolve = res; reject = rej })
+    return { promise, resolve, reject }
+  }
+  const memory = { id: 7, thought: '残す回答', occurred: '2026-10-25T10:00' }
+
+  // Consent given, a voice draft ready, one exchange and one memory on screen.
+  async function setup(send: Api['send']) {
+    const api = fakeApi(base({ voiceConfigured: true, exchanges: [exchange(1, '前の発言')], memories: [memory] }), { send })
+    render(<App api={api} recorder={recorder()} />)
+    await userEvent.click(await screen.findByText('音声で入力（任意）'))
+    await consent()
+    await userEvent.click(screen.getByRole('button', { name: '録音する' }))
+    await userEvent.click(await screen.findByRole('button', { name: /録音を止める/ }))
+    await userEvent.click(screen.getByRole('button', { name: '文字起こし' }))
+    const draft = await screen.findByRole('textbox', { name: '送信する文章（確認・編集）' })
+    await waitFor(() => expect(draft).toHaveValue('認識した文章'))
+    return api
+  }
+  const voiceSend = () => screen.getByRole('button', { name: 'この文章を送信' })
+  const typedSend = () => screen.getByRole('button', { name: '送信' })
+
+  it('blocks voice send while a typed send waits, then allows it again', async () => {
+    const first = deferred()
+    const send = vi.fn().mockReturnValueOnce(first.promise)
+    const api = await setup(send)
+    await userEvent.type(messageBox(), '手入力{Enter}')
+    expect(voiceSend()).toBeDisabled()
+    expect(screen.getByText('応答を待っています。完了するまで送信できません。')).toBeInTheDocument()
+    await userEvent.click(voiceSend())
+    expect(api.send).toHaveBeenCalledTimes(1)
+    await act(async () => first.resolve(base({ exchanges: [exchange(1, '手入力')] })))
+    await waitFor(() => expect(voiceSend()).toBeEnabled())
+    expect(screen.getByRole('textbox', { name: '送信する文章（確認・編集）' })).toHaveValue('認識した文章')
+  })
+
+  it('blocks typed send while a voice send waits, even with Enter, and keeps both on failure', async () => {
+    const first = deferred()
+    const send = vi.fn().mockReturnValueOnce(first.promise)
+    const api = await setup(send)
+    await userEvent.type(messageBox(), '手入力')
+    await userEvent.click(voiceSend())
+    expect(api.send).toHaveBeenCalledTimes(1)
+    expect(typedSend()).toBeDisabled()
+    await userEvent.type(messageBox(), '{Enter}')
+    await userEvent.click(typedSend())
+    expect(api.send).toHaveBeenCalledTimes(1)
+    await act(async () => first.reject(new ApiError('通信に失敗しました。')))
+    expect(await screen.findByText('通信に失敗しました。')).toBeInTheDocument()
+    expect(messageBox()).toHaveValue('手入力')
+    expect(screen.getByRole('textbox', { name: '送信する文章（確認・編集）' })).toHaveValue('認識した文章')
+    await waitFor(() => expect(typedSend()).toBeEnabled())
+    expect(voiceSend()).toBeEnabled()
+  })
+
+  it('does not call approve, reject, forget or clear while a send waits', async () => {
+    const first = deferred()
+    const api = await setup(vi.fn().mockReturnValueOnce(first.promise))
+    await userEvent.click(screen.getByText('この回答を覚えておく'))
+    // Confirm the deletions first, so only the in-flight send can be what disables the buttons.
+    await userEvent.click(screen.getByRole('checkbox', { name: 'この内容を忘れてよい' }))
+    await userEvent.click(screen.getByRole('checkbox', { name: '会話履歴を削除してよい' }))
+    expect(screen.getByRole('button', { name: '忘れる' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: '会話履歴を削除' })).toBeEnabled()
+    await userEvent.type(messageBox(), '手入力{Enter}')
+    for (const name of ['覚えておく', '今回は覚えない', '忘れる', '会話履歴を削除']) {
+      const button = screen.getByRole('button', { name })
+      expect(button).toBeDisabled()
+      await userEvent.click(button)
+    }
+    expect(api.approve).not.toHaveBeenCalled()
+    expect(api.reject).not.toHaveBeenCalled()
+    expect(api.forget).not.toHaveBeenCalled()
+    expect(api.clear).not.toHaveBeenCalled()
+    await act(async () => first.resolve(base()))
+  })
+
+  it('sends once for a double click or same-frame repeated Enter', async () => {
+    const first = deferred()
+    const api = await setup(vi.fn().mockReturnValueOnce(first.promise))
+    await userEvent.type(messageBox(), '手入力')
+    act(() => {
+      const box = messageBox()
+      box.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
+      box.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
+    })
+    expect(api.send).toHaveBeenCalledTimes(1)
+    await act(async () => first.resolve(base()))
+    await waitFor(() => expect(typedSend()).toBeDisabled()) // text was cleared after success
+    // Voice: two clicks in one act, before React re-renders the disabled state.
+    const second = deferred()
+    ;(api.send as ReturnType<typeof vi.fn>).mockReturnValueOnce(second.promise)
+    const button = voiceSend()
+    act(() => { button.click(); button.click() })
+    expect(api.send).toHaveBeenCalledTimes(2)
+    await act(async () => second.resolve(base()))
   })
 })

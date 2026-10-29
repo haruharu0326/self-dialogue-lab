@@ -5,13 +5,15 @@ import { MAX_SECONDS, RecorderError, type Recorder, type Recording } from '../re
 type Props = {
   configured: boolean
   enabled: boolean
+  /** Another request (typed send, approve, delete…) is in flight; sending is blocked but recording is not. */
+  busy: boolean
   recorder: Recorder
   transcribe: Api['transcribe']
   onSend: (text: string) => Promise<boolean>
 }
 
 /** Record, transcribe locally, review, then explicitly send. Remount (change key) to discard everything. */
-export function VoiceInput({ configured, enabled, recorder, transcribe, onSend }: Props) {
+export function VoiceInput({ configured, enabled, busy, recorder, transcribe, onSend }: Props) {
   const [recording, setRecording] = useState<Recording | null>(null)
   const [elapsed, setElapsed] = useState(0)
   const [audio, setAudio] = useState<Blob | null>(null)
@@ -115,8 +117,9 @@ export function VoiceInput({ configured, enabled, recorder, transcribe, onSend }
               <textarea value={draft} rows={3} onChange={(event) => setDraft(event.target.value)} />
             </label>
             {!enabled && <p className="note">送信にはGeminiの接続設定と、会話の送信確認が必要です。</p>}
+            {enabled && busy && working !== 'send' && <p className="note">応答を待っています。完了するまで送信できません。</p>}
             <div className="actions">
-              <button type="button" className="button button-primary" disabled={!enabled || !draft.trim() || working !== null} onClick={send}>
+              <button type="button" className="button button-primary" disabled={!enabled || busy || !draft.trim() || working !== null} onClick={send}>
                 この文章を送信
               </button>
               <button type="button" className="button button-quiet" disabled={working !== null} onClick={reset}>
