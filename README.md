@@ -55,6 +55,16 @@ Get-Content -Raw .\scripts\check_gemini.py | docker compose exec -T app python -
 
 覚えた回答はサイドバーの「覚えていること」で見返し、不要なら忘れさせられます。会話履歴の削除は別の操作です。記憶を消しても当時の会話は残り、会話を消しても記憶は残ります。
 
+## 開発の進め方
+
+- 開発方針の正本は[AGENTS.md](AGENTS.md)です。文書一覧と読む順、FR/NFR/ATと実装の対応表は[docs/README.md](docs/README.md)にあります。
+- 標準の流れ（文書の初稿から実装、テスト、レビュー、文書の更新まで）とブランチの規則は[標準の流れ](docs/development/subagents.md#標準の流れ)を参照してください。
+- Claude Codeでは、開発用サブエージェントに作業を分担できます。`planner`（計画）、`be-engineer`（API・DB・応答器）、`fe-engineer`（画面）、`tester`（テストの十分性確認）、`reviewer`（差分レビュー）、`doc-keeper`（文書の整合確認）、`refactorer`（振る舞いを変えない整理）です。定義は`.claude/agents/`、役割の詳細と使い分けは[開発用サブエージェント](docs/development/subagents.md)を参照してください。
+- フックが機械的に働きます。個人データ・DB・秘密への操作を拒否する`guard_private.py`、文書編集後に文書の整合テストを走らせる`check_docs.py`、作業記録を残す`log_activity.py`です。詳細は[hook](docs/development/subagents.md#hook)を参照してください。
+- 開発チャット：`python scripts/agent_chat.py --open`で、サブエージェントとのやり取りを`127.0.0.1`上でSlack風に表示します。記録は`.claude/activity/`に残り、Git対象外です。記録内容と止め方は[作業記録と開発チャット](docs/development/subagents.md#作業記録と開発チャット)を参照してください。
+- テストの実行方法は[開発・検証](#開発検証)を参照してください（事前に`pip install -e ".[dev]"`）。
+- 個人データ・DB・書き出し・秘密情報はGitに入れません。固定応答のテスト結果を、LLMの理解力や対話品質の検証とは表現しません。
+
 ## データと制約
 
 - 通常画面は自分用DBだけを使い、架空データを投入しません。既存のデータも削除しません。
